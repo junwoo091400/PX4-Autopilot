@@ -255,6 +255,12 @@ then
 		then
 			set USE_IO no
 		fi
+
+		if ver hwcmp PX4_SAME70XPLAINED_V1
+		then
+			set USE_IO no
+			set MAVLINK_COMPANION_DEVICE /dev/ttyS3
+		fi
 	else
 		set USE_IO no
 	fi
@@ -432,7 +438,12 @@ then
 	then
 		set OUTPUT_MODE hil
 	else
-		gps start
+		if ver hwcmp PX4_SAME70XPLAINED_V1
+		then
+			gps start -d /dev/ttyS2
+		else
+			gps start
+		fi
 	fi
 
 	set DATAMAN_OPT ""
@@ -492,29 +503,33 @@ then
 		set OUTPUT_MODE uavcan_esc
 	fi
 
-	# Sensors on the PWM interface bank
-	if param compare SENS_EN_LL40LS 1
+	if ver hwcmp PX4_SAME70XPLAINED_V1
 	then
-		# clear pins 5 and 6
-		set FMU_MODE pwm4
-		set AUX_MODE pwm4
-	fi
-	if param greater TRIG_MODE 0
-	then
-		# We ONLY support trigger on pins 5 and 6 when simultanously using AUX for actuator output
-		if param compare TRIG_PINS 56
+	else
+		# Sensors on the PWM interface bank
+		if param compare SENS_EN_LL40LS 1
 		then
 			# clear pins 5 and 6
 			set FMU_MODE pwm4
 			set AUX_MODE pwm4
-		else
-			set FMU_MODE none
-			set AUX_MODE none
 		fi
-		camera_trigger start
+		if param greater TRIG_MODE 0
+		then
+			# We ONLY support trigger on pins 5 and 6 when simultanously using AUX for actuator output
+			if param compare TRIG_PINS 56
+			then
+				# clear pins 5 and 6
+				set FMU_MODE pwm4
+				set AUX_MODE pwm4
+			else
+				set FMU_MODE none
+				set AUX_MODE none
+			fi
+			camera_trigger start
 
-		param set CAM_FBACK_MODE 1
-		camera_feedback start
+			param set CAM_FBACK_MODE 1
+			camera_feedback start
+		fi
 	fi
 
 	# If OUTPUT_MODE == none then something is wrong with setup and we shouldn't try to enable output
