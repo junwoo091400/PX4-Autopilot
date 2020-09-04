@@ -57,7 +57,7 @@ PARAM_DEFINE_INT32(JETSKI_ADC_ID, 0);
  * @category Developer
  * @group Jetski
  */
-PARAM_DEFINE_INT32(JETSKI_ADC_START, 121212);
+PARAM_DEFINE_INT32(JETSKI_ADC_START, 0);
 
 /**
  * ADC value when the throttle is at maximum
@@ -68,4 +68,4 @@ PARAM_DEFINE_INT32(JETSKI_ADC_START, 121212);
  * @category Developer
  * @group Jetski
  */
-PARAM_DEFINE_INT32(JETSKI_ADC_STOP, 284953);
+PARAM_DEFINE_INT32(JETSKI_ADC_STOP, 4095);
