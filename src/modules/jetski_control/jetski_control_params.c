@@ -31,61 +31,41 @@
  *
  ****************************************************************************/
 
-/**
- * @file FakeMagnetometer.cpp
+/*
+ * @file jetski_control_params.c
  *
- * Publish the earth magnetic field as a fake magnetometer (sensor_mag).
- * Requires vehicle_attitude and vehicle_gps_position
- *
+ * Parameters for Jetski Control Module.
  */
 
-#pragma once
+/**
+ * ID of the ADC the Jetski will take an input as
+ *
+ * @reboot_required true
+ * @min 0
+ * @max 1000
+ * @category Developer
+ * @group Jetski
+ */
+PARAM_DEFINE_INT32(JETSKI_ADC_ID, 0);
 
-#include <px4_platform_common/defines.h>
-#include <px4_platform_common/module.h>
-#include <px4_platform_common/module_params.h>
-#include <px4_platform_common/posix.h>
-#include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <drivers/drv_sensor.h>
-#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
-#include <uORB/Subscription.hpp>
-#include <uORB/topics/adc_report.h>
+/**
+ * ADC value when the throttle is at neutral
+ *
+ * @reboot_required true
+ * @min 0
+ * @max 4095
+ * @category Developer
+ * @group Jetski
+ */
+PARAM_DEFINE_INT32(JETSKI_ADC_START, 121212);
 
-class JetSkiControl : public ModuleBase<JetSkiControl>, public ModuleParams, public px4::ScheduledWorkItem
-{
-public:
-	JetSkiControl();
-	~JetSkiControl() override = default;
-
-	/** @see ModuleBase */
-	static int task_spawn(int argc, char *argv[]);
-
-	/** @see ModuleBase */
-	static int custom_command(int argc, char *argv[]);
-
-	/** @see ModuleBase */
-	static int print_usage(const char *reason = nullptr);
-
-	bool init();
-
-	/* Shows the adc values and throttle output for debugging purposes */
-	int test();
-
-	/* Calibration process for updating parameters */
-	int calibrate();
-
-private:
-	void Run() override;
-
-	float calculate_output_from_adc(int32_t adc_val);
-
-	int _throttle_adc_idx{-1};
-
-	uORB::Subscription _adc_report_sub{ORB_ID(adc_report)};
-
-	DEFINE_PARAMETERS(
-		(ParamInt<px4::params::JETSKI_ADC_ID>) _param_js_adc_id,
-		(ParamInt<px4::params::JETSKI_ADC_START>) _param_js_adc_start,
-		(ParamInt<px4::params::JETSKI_ADC_STOP>) _param_js_adc_stop
-	)
-};
+/**
+ * ADC value when the throttle is at maximum
+ *
+ * @reboot_required true
+ * @min 0
+ * @max 4095
+ * @category Developer
+ * @group Jetski
+ */
+PARAM_DEFINE_INT32(JETSKI_ADC_STOP, 284953);

@@ -15,8 +15,6 @@
 # @board bitcraze_crazyflie exclude
 #
 
-# Copied from 50000_generic_ground_vehicle airframe file.
-
 sh /etc/init.d/rc.rover_defaults
 
 if [ $AUTOCNF = yes ]
