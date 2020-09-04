@@ -31,10 +31,11 @@
 #
 ############################################################################
 px4_add_module(
-	MODULE examples__jetski_control
+	MODULE modules__jetski_control
 	MAIN jetski_control
 	STACK_MAX 1300
 	SRCS
-		main.cpp
+		jetski_control_main.cpp
+		jetski_control_main.hpp
 	DEPENDS
 	)

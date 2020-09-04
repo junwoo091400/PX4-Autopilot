@@ -69,6 +69,23 @@
                 "${workspaceFolder}/src/modules"
             ],
             "intelliSenseMode": "${default}"
+        },
+        {
+            "name": "Win32",
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "databaseFilename": "${workspaceFolder}/.vscode/browse.vc.db"
+            },
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "cppStandard": "c++14",
+            "cStandard": "c11",
+            "forcedInclude": [
+                "${workspaceFolder}/src/include/visibility.h"
+            ],
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "intelliSenseMode": "${default}"
         }
     ],
     "version": 4
