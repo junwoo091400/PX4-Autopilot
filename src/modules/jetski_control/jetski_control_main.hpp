@@ -46,10 +46,11 @@
 #include <px4_platform_common/module_params.h>
 #include <px4_platform_common/posix.h>
 #include <px4_platform_common/px4_work_queue/ScheduledWorkItem.hpp>
-#include <drivers/drv_sensor.h>
-#include <lib/drivers/magnetometer/PX4Magnetometer.hpp>
+#include <drivers/drv_adc.h>
 #include <uORB/Subscription.hpp>
+#include <uORB/Publication.hpp>
 #include <uORB/topics/adc_report.h>
+#include <uORB/topics/actuator_controls.h>
 
 class JetSkiControl : public ModuleBase<JetSkiControl>, public ModuleParams, public px4::ScheduledWorkItem
 {
@@ -77,11 +78,13 @@ public:
 private:
 	void Run() override;
 
-	float calculate_output_from_adc(int32_t adc_val);
+	float calculate_jet_output_from_adc(int32_t adc_val);
 
 	int _throttle_adc_idx{-1};
 
 	uORB::Subscription _adc_report_sub{ORB_ID(adc_report)};
+
+	uORB::Publication _actuator_controls_3_pub{ORB_ID(actuator_controls_3)};
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::JETSKI_ADC_ID>) _param_js_adc_id,

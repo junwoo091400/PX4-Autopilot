@@ -64,7 +64,8 @@ bool JetSkiControl::init()
 
 void JetSkiControl::Run()
 {
-	adc_report adc;
+	adc_report_s adc;
+	actuator_controls_s actuator_controls_3_instance;
 	int32_t adc_id = _param_js_adc_id.get();
 	float output_val;
 
@@ -85,6 +86,9 @@ void JetSkiControl::Run()
 			}
 		}
 		output_val = calculate_jet_output_from_adc(adc.raw_data[_throttle_adc_idx]);
+		actuator_controls_3_instance.timestamp = hrt_absolute_time();
+		actuator_controls_3_instance.control[5] = output_val; // AUX1 channel in Control Group #3
+		_actuator_controls_3_pub.publish(actuator_controls_3_instance);
 	}
 }
 
@@ -112,25 +116,28 @@ int JetSkiControl::task_spawn(int argc, char *argv[])
 }
 
 float JetSkiControl::calculate_jet_output_from_adc(int32_t adc_val) {
-	float raw_output
+	float raw_output = ((float)(adc_val - _param_js_adc_start.get()))/(_param_js_adc_stop.get() - _param_js_adc_start.get());
 	return math::constrain(raw_output, 0.0f, 1.0f);
 }
 
 int JetSkiControl::test() {
-	uORB::Subscription	adc_sub_test{ORB_ID(adc_report)};
 	adc_report_s adc;
+	actuator_controls_s actuator_controls_3_instance;
 
 	PX4_INFO_RAW("JetSkiControl test starting.\n");
 	PX4_INFO_RAW("Current ADC ID: %d, ADC idx: %d\n", _param_js_adc_id.get(), _throttle_adc_idx)
 	px4_usleep(20000);	// sleep 20ms and wait for adc report
 
-	if (adc_sub_test.update(&adc)) {
+	if (_adc_report_sub.update(&adc)) {
 
 		for (unsigned l = 0; l < 20; ++l) {
 			float output_val = calculate_jet_output_from_adc(adc.raw_data[_throttle_adc_idx]);
+			actuator_controls_3_instance.timestamp = hrt_absolute_time();
+			actuator_controls_3_instance.control[5] = output_val; // AUX1 channel in Control Group #3
+			_actuator_controls_3_pub.publish(actuator_controls_3_instance);
+
 			PX4_INFO_RAW("ID(% 3d)\tVAL: % 6d\tOut:% f", adc.channel_id[_throttle_adc_idx], adc.raw_data[_throttle_adc_idx], output_val);
 			px4_usleep(500000);
-
 			if (!adc_sub_test.update(&adc)) {
 				PX4_INFO_RAW("\t ADC sample not updated!\n");
 			}
