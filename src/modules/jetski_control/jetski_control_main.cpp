@@ -125,7 +125,7 @@ int JetSkiControl::test() {
 	actuator_controls_s actuator_controls_3_instance;
 
 	PX4_INFO_RAW("JetSkiControl test starting.\n");
-	PX4_INFO_RAW("Current ADC ID: %d, ADC idx: %d\n", _param_js_adc_id.get(), _throttle_adc_idx)
+	PX4_INFO_RAW("Current ADC ID: %d, ADC idx: %d\n", _param_js_adc_id.get(), _throttle_adc_idx);
 	px4_usleep(20000);	// sleep 20ms and wait for adc report
 
 	if (_adc_report_sub.update(&adc)) {
@@ -136,9 +136,9 @@ int JetSkiControl::test() {
 			actuator_controls_3_instance.control[5] = output_val; // AUX1 channel in Control Group #3
 			_actuator_controls_3_pub.publish(actuator_controls_3_instance);
 
-			PX4_INFO_RAW("ID(% 3d)\tVAL: % 6d\tOut:% f", adc.channel_id[_throttle_adc_idx], adc.raw_data[_throttle_adc_idx], output_val);
+			PX4_INFO_RAW("ID(% 3d)\tVAL: % 6d\tOut: %f", adc.channel_id[_throttle_adc_idx], adc.raw_data[_throttle_adc_idx], (double) output_val);
 			px4_usleep(500000);
-			if (!adc_sub_test.update(&adc)) {
+			if (!_adc_report_sub.update(&adc)) {
 				PX4_INFO_RAW("\t ADC sample not updated!\n");
 			}
 			PX4_INFO_RAW(" DeviceID: %d", adc.device_id);
@@ -156,8 +156,8 @@ int JetSkiControl::test() {
 }
 
 int JetSkiControl::calibrate() {
-	float adc_low, adc_high;
-	bool adc_input_reversed = false;
+	int32_t adc_low{0}, adc_high{4095};
+	return adc_low + adc_high;
 }
 
 int JetSkiControl::custom_command(int argc, char *argv[])
@@ -191,12 +191,14 @@ int JetSkiControl::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
-Publish the earth magnetic field as a fake magnetometer (sensor_mag).
-Requires vehicle_attitude and vehicle_gps_position.
+Convert ADC throttle voltage input into Waterjet
+actuator control output on AUX1 channel.
 )DESCR_STR");
 
-	PRINT_MODULE_USAGE_NAME("fake_magnetometer", "driver");
+	PRINT_MODULE_USAGE_NAME("jetski_control", "module");
 	PRINT_MODULE_USAGE_COMMAND("start");
+	PRINT_MODULE_USAGE_COMMAND("test");
+	PRINT_MODULE_USAGE_COMMAND("calibrate");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 	return 0;
 }
