@@ -121,6 +121,7 @@ float JetSkiControl::calculate_jet_output_from_adc(int32_t adc_val) {
 }
 
 int JetSkiControl::test() {
+	uORB::Subscription _adc_report_sub_tmp{ORB_ID(adc_report)}; // temporary subscription since '_adc_report_sub' is already occupied.
 	adc_report_s adc;
 	// actuator_controls_s actuator_controls_3_instance;
 
@@ -130,7 +131,7 @@ int JetSkiControl::test() {
 
 	for (unsigned l = 0; l < 20; ++l) {
 		px4_usleep(500000);
-		if (!_adc_report_sub.update(&adc)) {
+		if (!_adc_report_sub_tmp.update(&adc)) {
 			PX4_INFO_RAW("\nOops! ADC sample not updated!\n");
 			continue;
 		}
@@ -146,7 +147,7 @@ int JetSkiControl::test() {
 	}
 
 	PX4_INFO_RAW("\t ADC test successful.\n");
-
+	return 0;
 }
 
 int JetSkiControl::calibrate() {
@@ -182,10 +183,14 @@ int JetSkiControl::calibrate() {
 		PX4_INFO_RAW("Success, Got neutral ADC mean value of : %d\n", adc_start);
 	}
 
+	num_samples = 0;
+	num_adc_read_fail = 0;
+
 	PX4_INFO_RAW("Put Throttle into MAXIMUM in 2 seconds.\n");
 	px4_usleep(2000000);
 
-	PX4_INFO_RAW("Measuring ADC start value [n = 10]");
+	PX4_INFO_RAW("Measuring ADC stop value [n = 10]");
+
 	while (num_samples < 10 && num_adc_read_fail < 20) {
 		px4_usleep(100000);
 		if (!_adc_report_sub.update(&adc)) {
