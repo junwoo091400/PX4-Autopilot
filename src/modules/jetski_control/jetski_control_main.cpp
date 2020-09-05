@@ -122,42 +122,94 @@ float JetSkiControl::calculate_jet_output_from_adc(int32_t adc_val) {
 
 int JetSkiControl::test() {
 	adc_report_s adc;
-	actuator_controls_s actuator_controls_3_instance;
+	// actuator_controls_s actuator_controls_3_instance;
 
 	PX4_INFO_RAW("JetSkiControl test starting.\n");
 	PX4_INFO_RAW("Current ADC ID: %d, ADC idx: %d\n", _param_js_adc_id.get(), _throttle_adc_idx);
 	px4_usleep(20000);	// sleep 20ms and wait for adc report
 
-	if (_adc_report_sub.update(&adc)) {
-
-		for (unsigned l = 0; l < 20; ++l) {
-			float output_val = calculate_jet_output_from_adc(adc.raw_data[_throttle_adc_idx]);
-			actuator_controls_3_instance.timestamp = hrt_absolute_time();
-			actuator_controls_3_instance.control[5] = output_val; // AUX1 channel in Control Group #3
-			_actuator_controls_3_pub.publish(actuator_controls_3_instance);
-
-			PX4_INFO_RAW("ID(% 3d)\tVAL: % 6d\tOut: %f", adc.channel_id[_throttle_adc_idx], adc.raw_data[_throttle_adc_idx], (double) output_val);
-			px4_usleep(500000);
-			if (!_adc_report_sub.update(&adc)) {
-				PX4_INFO_RAW("\t ADC sample not updated!\n");
-			}
-			PX4_INFO_RAW(" DeviceID: %d", adc.device_id);
-			PX4_INFO_RAW(" Resolution: %d", adc.resolution);
-			PX4_INFO_RAW(" Voltage Reference: %f\n", (double)adc.v_ref);
+	for (unsigned l = 0; l < 20; ++l) {
+		px4_usleep(500000);
+		if (!_adc_report_sub.update(&adc)) {
+			PX4_INFO_RAW("\nOops! ADC sample not updated!\n");
+			continue;
 		}
+		float output_val = calculate_jet_output_from_adc(adc.raw_data[_throttle_adc_idx]);
+		// actuator_controls_3_instance.timestamp = hrt_absolute_time();
+		// actuator_controls_3_instance.control[5] = output_val; // AUX1 channel in Control Group #3
+		// _actuator_controls_3_pub.publish(actuator_controls_3_instance);
 
-		PX4_INFO_RAW("\t ADC test successful.\n");
-
-		return 0;
-
-	} else {
-		return 1;
+		PX4_INFO_RAW("ID(%3d)\tVAL: % 6d\tOut: %f", adc.channel_id[_throttle_adc_idx], adc.raw_data[_throttle_adc_idx], (double) output_val);
+		PX4_INFO_RAW("\tDeviceID: %d", adc.device_id);
+		PX4_INFO_RAW("\tResolution: %d", adc.resolution);
+		PX4_INFO_RAW("\tVoltage Reference: %f\n", (double)adc.v_ref);
 	}
+
+	PX4_INFO_RAW("\t ADC test successful.\n");
+
 }
 
 int JetSkiControl::calibrate() {
-	int32_t adc_low{0}, adc_high{4095};
-	return adc_low + adc_high;
+	int32_t adc_start{0}, adc_stop{4095};
+	adc_report_s adc;
+	int num_samples{0};
+	int num_adc_read_fail{0};
+
+	PX4_INFO_RAW("JetSkiControl test starting.\n");
+	PX4_INFO_RAW("Current JETSKI_ADC_ID: %d, ADC idx: %d\n", _param_js_adc_id.get(), _throttle_adc_idx);
+	px4_usleep(20000);	// sleep 20ms and wait for adc report
+
+	PX4_INFO_RAW("Put Throttle into NEUTRAL in 2 seconds\n");
+	px4_usleep(2000000);
+
+	PX4_INFO_RAW("Measuring ADC start value [n = 10]");
+	while (num_samples < 10 && num_adc_read_fail < 20) {
+		px4_usleep(100000);
+		if (!_adc_report_sub.update(&adc)) {
+			num_adc_read_fail++;
+		}
+		else {
+			adc_start += adc.raw_data[_throttle_adc_idx];
+			num_samples++;
+		}
+	}
+	if (num_samples < 10) {
+		PX4_INFO_RAW("ADC value not obtained :(, samples : %d, adc fails : %d\n", num_samples, num_adc_read_fail);
+		return -1;
+	}
+	else {
+		adc_start /= 10;
+		PX4_INFO_RAW("Success, Got neutral ADC mean value of : %d\n", adc_start);
+	}
+
+	PX4_INFO_RAW("Put Throttle into MAXIMUM in 2 seconds.\n");
+	px4_usleep(2000000);
+
+	PX4_INFO_RAW("Measuring ADC start value [n = 10]");
+	while (num_samples < 10 && num_adc_read_fail < 20) {
+		px4_usleep(100000);
+		if (!_adc_report_sub.update(&adc)) {
+			num_adc_read_fail++;
+		}
+		else {
+			adc_stop += adc.raw_data[_throttle_adc_idx];
+			num_samples++;
+		}
+	}
+	if (num_samples < 10) {
+		PX4_INFO_RAW("ADC value not obtained :(, samples : %d, adc fails : %d\n", num_samples, num_adc_read_fail);
+		return -1;
+	}
+	else {
+		adc_stop /= 10;
+		PX4_INFO_RAW("Success, Got max range ADC mean value of : %d\n", adc_start);
+	}
+
+	PX4_INFO_RAW("Writing ADC values into Params...\n");
+	_param_js_adc_start.set(adc_start);
+	_param_js_adc_stop.set(adc_stop);
+
+	return 0;
 }
 
 int JetSkiControl::custom_command(int argc, char *argv[])
