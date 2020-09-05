@@ -152,7 +152,7 @@ int JetSkiControl::test() {
 
 int JetSkiControl::calibrate() {
 	uORB::Subscription _adc_report_sub_tmp{ORB_ID(adc_report)}; // temporary subscription since '_adc_report_sub' is already occupied.
-	int32_t adc_start{0}, adc_stop{4095};
+	int32_t adc_start{0}, adc_stop{0};
 	adc_report_s adc;
 	int num_samples{0};
 	int num_adc_read_fail{0};
@@ -164,8 +164,8 @@ int JetSkiControl::calibrate() {
 	PX4_INFO_RAW("Put Throttle into NEUTRAL in 2 seconds\n");
 	px4_usleep(2000000);
 
-	PX4_INFO_RAW("Measuring ADC start value in 4 seconds [n = 10]");
-	px4_usleep(4000000);
+	PX4_INFO_RAW("Measuring ADC start value in 2 seconds [n = 10]\n");
+	px4_usleep(2000000);
 
 	while (num_samples < 10 && num_adc_read_fail < 20) {
 		px4_usleep(100000);
@@ -174,6 +174,7 @@ int JetSkiControl::calibrate() {
 		}
 		else {
 			adc_start += adc.raw_data[_throttle_adc_idx];
+			PX4_INFO_RAW("%d\n",adc.raw_data[_throttle_adc_idx]);
 			num_samples++;
 		}
 	}
@@ -192,8 +193,8 @@ int JetSkiControl::calibrate() {
 	PX4_INFO_RAW("Put Throttle into MAXIMUM in 2 seconds.\n");
 	px4_usleep(2000000);
 
-	PX4_INFO_RAW("Measuring ADC stop value in 4 seconds. [n = 10]");
-	px4_usleep(4000000);
+	PX4_INFO_RAW("Measuring ADC stop value in 2 seconds. [n = 10]\n");
+	px4_usleep(2000000);
 
 	while (num_samples < 10 && num_adc_read_fail < 20) {
 		px4_usleep(100000);
@@ -202,6 +203,7 @@ int JetSkiControl::calibrate() {
 		}
 		else {
 			adc_stop += adc.raw_data[_throttle_adc_idx];
+			PX4_INFO_RAW("%d\n",adc.raw_data[_throttle_adc_idx]);
 			num_samples++;
 		}
 	}
