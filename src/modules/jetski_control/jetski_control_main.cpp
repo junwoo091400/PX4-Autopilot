@@ -207,12 +207,14 @@ int JetSkiControl::calibrate() {
 	}
 	else {
 		adc_stop /= 10;
-		PX4_INFO_RAW("Success, Got max range ADC mean value of : %d\n", adc_start);
+		PX4_INFO_RAW("Success, Got max range ADC mean value of : %d\n", adc_stop);
 	}
 
 	PX4_INFO_RAW("Writing ADC values into Params...\n");
 	_param_js_adc_start.set(adc_start);
+	_param_js_adc_start.commit();
 	_param_js_adc_stop.set(adc_stop);
+	_param_js_adc_stop.commit();
 
 	return 0;
 }
