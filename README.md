@@ -1,3 +1,63 @@
+# Jetski Control Branch
+- Creator : Junwoo Hwang
+- Purpose : to control a custom jetski we (team WJPL) built.
+
+# Revisions
+
+## First Working Version (v20200908)
+
+### Micro SD card content Setup instructions
+First, Create "extras.txt" file under "/etc" folder of a MicroSD card and put 'jetski_control start' inside the file.
+
+You can do this by :
+
+`echo "jetski_control start" > /fs/microsd/etc/extras.txt`
+
+If you have the file set up correctly, you should be able to view the following content inside the file via QGroundControl's MAVLink Console.
+
+![Extras.txt img](./extras-txt-screenshot.PNG)
+
+Next, Create "pass.aux.mix" file inside the "/etc/mixers" folder inside the MicroSD card and put the following content inside :
+```
+Jetski Mixer
+===========================
+
+This file defines mixers suitable for controlling a custom electric Jetski.
+
+Inputs to the mixer come from the control group 2 (Gimbal), channel 4 (Reserved)
+and channel 5 (Reserved) for Waterjet Thrust & Thrust Vector control each.
+
+Waterjet mixer (AUX0)
+-----------------
+Two scalers total (output, thrust).
+
+This mixer generates a full-range output (-1 to 1) from an input in the (0 - 1)
+range.  Inputs below zero are treated as zero.
+
+M: 1
+S: 2 4      0  20000 -10000 -10000  10000
+
+TVC mixer (AUX1)
+-----------------
+
+M: 1
+S: 2 5  10000  10000      0 -10000  10000
+```
+I would recommend you to edit this file by actually extracting the MicroSD card from the board, as it won't be easy to type that inside a NuttX Shell. (It doesn't have vim or any other text editors, I mostly use 'echo' command)
+
+If you have file in the correct place, you should be able to browse it via QGC:
+
+![pass.aux.mix screenshot](./pass-aux-mix-screenshot.PNG)
+
+### Output Setup Instructions
+We are using mainly the AUX1 output for outputting a waterjet ESC control signal. And AUX1, for a Pixhawk1 board (FMUv3, HW v2.4.8) is located on the outermost side of the AUX channels.
+
+### Parameter Setup Instructions
+We are using 'Generic Ground rover' as the airframe. Select that airframe from the QGC's Airframes panel, and reboot.
+
+
+
+---
 # PX4 Drone Autopilot
 
 [![Releases](https://img.shields.io/github/release/PX4/Firmware.svg)](https://github.com/PX4/Firmware/releases) [![DOI](https://zenodo.org/badge/22634/PX4/Firmware.svg)](https://zenodo.org/badge/latestdoi/22634/PX4/Firmware)
