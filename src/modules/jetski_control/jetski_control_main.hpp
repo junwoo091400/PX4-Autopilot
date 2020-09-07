@@ -84,7 +84,7 @@ private:
 
 	uORB::Subscription _adc_report_sub{ORB_ID(adc_report)};
 
-	uORB::Publication<actuator_controls_s> _actuator_controls_3_pub{ORB_ID(actuator_controls_3)};
+	uORB::Publication<actuator_controls_s> _actuator_controls_2_pub{ORB_ID(actuator_controls_2)};
 
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::JETSKI_ADC_ID>) _param_js_adc_id,

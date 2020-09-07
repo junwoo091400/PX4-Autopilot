@@ -65,7 +65,7 @@ bool JetSkiControl::init()
 void JetSkiControl::Run()
 {
 	adc_report_s adc;
-	actuator_controls_s actuator_controls_3_instance;
+	actuator_controls_s actuator_controls_2_instance; // gimbal control
 	int32_t adc_id = _param_js_adc_id.get();
 	float output_val;
 
@@ -86,9 +86,9 @@ void JetSkiControl::Run()
 			}
 		}
 		output_val = calculate_jet_output_from_adc(adc.raw_data[_throttle_adc_idx]);
-		actuator_controls_3_instance.timestamp = hrt_absolute_time();
-		actuator_controls_3_instance.control[5] = output_val; // AUX1 channel in Control Group #3
-		_actuator_controls_3_pub.publish(actuator_controls_3_instance);
+		actuator_controls_2_instance.timestamp = hrt_absolute_time();
+		actuator_controls_2_instance.control[4] = output_val; // Reserved channel in Control Group #2 (Gimbal)
+		_actuator_controls_2_pub.publish(actuator_controls_2_instance);
 	}
 }
 
