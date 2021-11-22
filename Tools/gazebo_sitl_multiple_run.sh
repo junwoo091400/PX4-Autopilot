@@ -8,8 +8,13 @@
 
 function cleanup() {
 	pkill -x px4
-	pkill gzclient
 	pkill gzserver
+
+	if [[ -n "$HEADLESS" ]]; then
+		exit
+	else
+		kill gzclient
+	fi
 }
 
 function spawn_model() {
@@ -132,9 +137,20 @@ else
 			n=$(($n + 1))
 		done
 	done
-
 fi
-trap "cleanup" SIGINT SIGTERM EXIT
 
-echo "Starting gazebo client"
-gzclient
+if [[ -n "$HEADLESS" ]]; then
+	trap "cleanup" SIGINT SIGTERM
+
+	while :
+	do
+		  echo "Multi vehile simulation running. Close with ctrl+c."
+		  sleep 5
+	done
+else
+	trap "cleanup" SIGINT SIGTERM EXIT
+
+	echo "Starting gazebo client"
+	gzclient
+fi
+
