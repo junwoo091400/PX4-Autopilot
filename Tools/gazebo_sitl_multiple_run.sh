@@ -13,7 +13,7 @@ function cleanup() {
 	if [[ -n "$HEADLESS" ]]; then
 		exit
 	else
-		kill gzclient
+		pkill gzclient
 	fi
 }
 
@@ -70,7 +70,6 @@ do
 		w) WORLD=${OPTARG};;
 		s) SCRIPT=${OPTARG};;
 		t) TARGET=${OPTARG};;
-		l) LABEL=_${OPTARG};;
 	esac
 done
 
