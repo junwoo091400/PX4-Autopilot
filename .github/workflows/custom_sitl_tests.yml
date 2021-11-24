@@ -51,6 +51,12 @@ jobs:
           git checkout af564093d70055d70f786e0a3ca3118a0897efc0
           git submodule update --init --recursive
           cd -
+      run: git clone --recursive git@github.com:Auterion/ci_gazebo_models.git $HOME/ci_gazebo_models
+    - name: Copy Custom airframe configs
+      run: |
+          cd $HOME/ci_gazebo_models
+          source $HOME/ci_gazebo_models/setup.bash $HOME/ci_gazebo_models $GITHUB_WORKSPACE build/px4_sitl_rtps
+      shell: bash
     - name: Prepare ccache timestamp
       id: ccache_cache_timestamp
       shell: cmake -P {0}
