@@ -6,6 +6,8 @@
 # For example gazebo can be run like this:
 #./Tools/gazebo_sitl_multiple_run.sh -n 10 -m iris
 
+SUPPORTED_MODELS=("iris" "plane" "standard_vtol" "rover" "r1_rover" "typhoon_h480")
+
 function cleanup() {
 	pkill -x px4
 	pkill gzserver
@@ -25,7 +27,6 @@ function spawn_model() {
 	X=${X:=0.0}
 	Y=${Y:=$((3*${N}))}
 
-	SUPPORTED_MODELS=("iris" "plane" "standard_vtol" "rover" "r1_rover" "typhoon_h480" "aera" "astro" "vector")
 	if [[ " ${SUPPORTED_MODELS[*]} " != *"$MODEL"* ]];
 	then
 		echo "ERROR: Currently only vehicle model $MODEL is not supported!"
@@ -56,12 +57,13 @@ function spawn_model() {
 
 if [ "$1" == "-h" ] || [ "$1" == "--help" ]
 then
-	echo "Usage: $0 [-n <num_vehicles>] [-m <vehicle_model>] [-w <world>] [-s <script>]"
+	echo "Usage: $0 [-n <num_vehicles>] [-m <vehicle_model>] [-w <world>] [-s <script>] [-c <custom_models>]"
 	echo "-s flag is used to script spawning vehicles e.g. $0 -s iris:3,plane:2"
+	echo "-c flag is used to allow custom models e.g. $0 -s \"my_plane my_plane_2\""
 	exit 1
 fi
 
-while getopts n:m:w:s:t:l: option
+while getopts n:m:w:s:t:c: option
 do
 	case "${option}"
 	in
@@ -70,6 +72,7 @@ do
 		w) WORLD=${OPTARG};;
 		s) SCRIPT=${OPTARG};;
 		t) TARGET=${OPTARG};;
+		c) CUSTOM_MODELS=${OPTARG};;
 	esac
 done
 
@@ -78,6 +81,8 @@ world=${WORLD:=empty}
 target=${TARGET:=px4_sitl_default}
 vehicle_model=${VEHICLE_MODEL:="iris"}
 export PX4_SIM_MODEL=${vehicle_model}
+
+SUPPORTED_MODELS+=(${CUSTOM_MODELS})
 
 echo ${SCRIPT}
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
