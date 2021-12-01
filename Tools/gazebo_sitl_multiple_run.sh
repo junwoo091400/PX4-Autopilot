@@ -44,8 +44,11 @@ function spawn_model() {
 	export PX4_VIDEO_HOST_IP=${PX4_VIDEO_HOST_IP%.*}.$((${PX4_VIDEO_HOST_IP##*.}+$N))
 	echo "PX4_VIDEO_HOST_IP '$PX4_VIDEO_HOST_IP'"
 
+	export PX4_SIM_REMOTE_HOST=${PX4_SIM_REMOTE_HOST%.*}.$((${PX4_SIM_REMOTE_HOST##*.}+$N))
+	echo "PX4_SIM_REMOTE_HOST '$PX4_SIM_REMOTE_HOST'"
+
 	../bin/px4 -i $N -d "$build_path/etc" -w sitl_${MODEL}_${N} -s etc/init.d-posix/rcS >out.log 2>err.log &
-	python3 ${src_path}/Tools/sitl_gazebo/scripts/jinja_gen.py ${src_path}/Tools/sitl_gazebo/models/${MODEL}/${MODEL}.sdf.jinja ${src_path}/Tools/sitl_gazebo --mavlink_tcp_port $((4560+${N})) --mavlink_udp_port $((14560+${N})) --mavlink_id $((1+${N})) --gst_udp_port $((5600+${N})) --video_uri $((5600+${N})) --mavlink_cam_udp_port $((14530+${N})) --output-file /tmp/${MODEL}_${N}.sdf
+	python3 ${src_path}/Tools/sitl_gazebo/scripts/jinja_gen.py ${src_path}/Tools/sitl_gazebo/models/${MODEL}/${MODEL}.sdf.jinja ${src_path}/Tools/sitl_gazebo --mavlink_tcp_port $((4560+${N})) --mavlink_udp_port $((14560+${N})) --mavlink_id $((1+${N})) --gst_udp_host 172.5.0.$((7+${N})) --gst_udp_port $((5600)) --video_uri $((5600+${N})) --mavlink_cam_udp_port $((14530+${N})) --udp_onboard_gimbal_port_local $((13030+${N})) --output-file /tmp/${MODEL}_${N}.sdf
 
 	echo "Spawning ${MODEL}_${N} at ${X} ${Y}"
 
@@ -152,7 +155,7 @@ if [[ -n "$HEADLESS" ]]; then
 
 	while :
 	do
-		  echo "Multi vehile simulation running. Close with ctrl+c."
+		  
 		  sleep 5
 	done
 else
