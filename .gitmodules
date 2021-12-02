@@ -35,7 +35,7 @@
 	url = https://github.com/PX4/PX4-FlightGear-Bridge.git
 [submodule "Tools/jsbsim_bridge"]
 	path = Tools/jsbsim_bridge
-	url = https://github.com/Auterion/px4-jsbsim-bridge.git
+	url = https://github.com/PX4/px4-jsbsim-bridge.git
 [submodule "src/drivers/uavcan_v1/libcanard"]
 	path = src/drivers/uavcan_v1/libcanard
 	url = https://github.com/UAVCAN/libcanard.git
