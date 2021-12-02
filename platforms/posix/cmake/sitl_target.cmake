@@ -190,6 +190,7 @@ set(worlds
 	warehouse
 	windy
 	yosemite
+	camp_roberts
 )
 
 set(all_posix_vmd_make_targets)
