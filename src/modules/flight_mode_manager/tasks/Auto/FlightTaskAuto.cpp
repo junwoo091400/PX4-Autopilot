@@ -40,8 +40,6 @@
 
 using namespace matrix;
 
-static constexpr float SIGMA_NORM	= 0.001f;
-
 FlightTaskAuto::FlightTaskAuto() :
 	_obstacle_avoidance(this),
 	_sticks(this),
@@ -547,7 +545,7 @@ void FlightTaskAuto::_set_heading_from_mode()
 		break;
 	}
 
-	if (PX4_ISFINITE(v.length())) {
+	if (PX4_ISFINITE(v.norm_squared())) {
 		// We only adjust yaw if vehicle is outside of acceptance radius. Once we enter acceptance
 		// radius, lock yaw to current yaw.
 		// This prevents excessive yawing.
@@ -651,6 +649,7 @@ State FlightTaskAuto::_getCurrentState()
 	} else if (Vector2f(_position - _closest_pt).longerThan(_target_acceptance_radius)) {
 		// Vehicle too far from the track
 		return_state = State::offtrack;
+
 	}
 
 	return return_state;
@@ -696,13 +695,13 @@ void FlightTaskAuto::_updateInternalWaypoints()
 
 bool FlightTaskAuto::_compute_heading_from_2D_vector(float &heading, Vector2f v)
 {
-	if (PX4_ISFINITE(v.length()) && v.length() > SIGMA_NORM) {
+	if (PX4_ISFINITE(v.norm_squared()) && v.longerThan(1e-3f)) {
 		v.normalize();
 		// To find yaw: take dot product of x = (1,0) and v
 		// and multiply by the sign given of cross product of x and v.
 		// Dot product: (x(0)*v(0)+(x(1)*v(1)) = v(0)
 		// Cross product: x(0)*v(1) - v(0)*x(1) = v(1)
-		heading =  sign(v(1)) * wrap_pi(acosf(v(0)));
+		heading = sign(v(1)) * wrap_pi(acosf(v(0)));
 		return true;
 	}
 
@@ -771,8 +770,8 @@ bool FlightTaskAuto::_generateHeadingAlongTraj()
 	Vector2f vel_sp_xy(_velocity_setpoint);
 	Vector2f traj_to_target = Vector2f(_target) - Vector2f(_position);
 
-	if ((vel_sp_xy.length() > .1f) &&
-	    (traj_to_target.length() > 2.f)) {
+	if ((vel_sp_xy.longerThan(.1f)) &&
+	    (traj_to_target.longerThan(2.f))) {
 		// Generate heading from velocity vector, only if it is long enough
 		// and if the drone is far enough from the target
 		_compute_heading_from_2D_vector(_yaw_setpoint, vel_sp_xy);
