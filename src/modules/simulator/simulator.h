@@ -296,6 +296,7 @@ private:
 	float _last_magx{0.0f};
 	float _last_magy{0.0f};
 	float _last_magz{0.0f};
+	bool _use_dynamic_mixing{false};
 
 	int32_t _output_functions[actuator_outputs_s::NUM_ACTUATOR_OUTPUTS] {};
 
