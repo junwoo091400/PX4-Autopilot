@@ -447,6 +447,7 @@ PARAM_DEFINE_FLOAT(COM_OBC_LOSS_T, 5.0f);
  * @value 7 Offboard
  * @value 8 Stabilized
  * @value 12 Follow Me
+ * @value 13 Precision Land
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_FLTMODE1, -1);
@@ -470,6 +471,7 @@ PARAM_DEFINE_INT32(COM_FLTMODE1, -1);
  * @value 7 Offboard
  * @value 8 Stabilized
  * @value 12 Follow Me
+ * @value 13 Precision Land
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_FLTMODE2, -1);
@@ -493,6 +495,7 @@ PARAM_DEFINE_INT32(COM_FLTMODE2, -1);
  * @value 7 Offboard
  * @value 8 Stabilized
  * @value 12 Follow Me
+ * @value 13 Precision Land
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_FLTMODE3, -1);
@@ -516,6 +519,7 @@ PARAM_DEFINE_INT32(COM_FLTMODE3, -1);
  * @value 7 Offboard
  * @value 8 Stabilized
  * @value 12 Follow Me
+ * @value 13 Precision Land
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_FLTMODE4, -1);
@@ -539,6 +543,7 @@ PARAM_DEFINE_INT32(COM_FLTMODE4, -1);
  * @value 7 Offboard
  * @value 8 Stabilized
  * @value 12 Follow Me
+ * @value 13 Precision Land
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_FLTMODE5, -1);
@@ -562,6 +567,7 @@ PARAM_DEFINE_INT32(COM_FLTMODE5, -1);
  * @value 7 Offboard
  * @value 8 Stabilized
  * @value 12 Follow Me
+ * @value 13 Precision Land
  * @group Commander
  */
 PARAM_DEFINE_INT32(COM_FLTMODE6, -1);
