@@ -15,7 +15,7 @@ param set-default FD_ACT_MOT_TOUT 500
 # param set-default SYS_CTRL_ALLOC 1
 param set-default CA_AIRFRAME 2
 
-param set-default CA_ROTOR_COUNT 4
+param set-default CA_ROTOR_COUNT 5
 param set-default CA_ROTOR0_PX 0.1515
 param set-default CA_ROTOR0_PY 0.245
 param set-default CA_ROTOR0_KM 0.05
@@ -28,6 +28,9 @@ param set-default CA_ROTOR2_KM -0.05
 param set-default CA_ROTOR3_PX -0.1515
 param set-default CA_ROTOR3_PY 0.1875
 param set-default CA_ROTOR3_KM -0.05
+param set-default CA_ROTOR4_AX 1.0
+param set-default CA_ROTOR4_AZ 0.0
+param set-default CA_ROTOR4_PX 0.2
 
 param set-default CA_SV_CS_COUNT 3
 param set-default CA_SV_CS0_TYPE 1
