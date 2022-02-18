@@ -66,6 +66,7 @@ protected:
 	DEFINE_PARAMETERS_CUSTOM_PARENT(FlightTaskManualAltitude,
 					(ParamFloat<px4::params::MPC_VEL_MANUAL>) _param_mpc_vel_manual,
 					(ParamFloat<px4::params::MPC_VEL_LAT_SC>) _param_mpc_vel_lat_sc,
+					(ParamFloat<px4::params::MPC_VEL_BACK_SC>) _param_mpc_vel_back_sc,
 					(ParamFloat<px4::params::MPC_ACC_HOR_MAX>) _param_mpc_acc_hor_max,
 					(ParamFloat<px4::params::MPC_HOLD_MAX_XY>) _param_mpc_hold_max_xy
 				       )

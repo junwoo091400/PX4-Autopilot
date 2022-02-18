@@ -83,6 +83,10 @@ void StickAccelerationXY::generateSetpoints(Vector2f stick_xy, const float yaw, 
 	Sticks::limitStickUnitLengthXY(stick_xy);
 	stick_xy(1) *= math::constrain(_param_mpc_vel_lat_sc.get(), 0.01f, 1.f);
 
+	if (stick_xy(0) < 0.f) {
+		stick_xy(0) *= math::constrain(_param_mpc_vel_back_sc.get(), 0.01f, 1.f);
+	}
+
 	Sticks::rotateIntoHeadingFrameXY(stick_xy, yaw, yaw_sp);
 	_acceleration_setpoint = stick_xy.emult(acceleration_scale);
 	applyJerkLimit(dt);

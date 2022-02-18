@@ -378,6 +378,20 @@ PARAM_DEFINE_FLOAT(MPC_VEL_MANUAL, 10.0f);
 PARAM_DEFINE_FLOAT(MPC_VEL_LAT_SC, 1.0f);
 
 /**
+ * Ratio between backward and forward maximum velocity
+ *
+ * The maximum backward speed is defined by:
+ * MPC_VEL_BACK_SC * MPC_VEL_MANUAL
+ *
+ * @min 0.1
+ * @max 1.0
+ * @increment 0.1
+ * @decimal 2
+ * @group Multicopter Position Control
+ */
+PARAM_DEFINE_FLOAT(MPC_VEL_BACK_SC, 1.0f);
+
+/**
  * Maximum horizontal velocity
  *
  * Maximum horizontal velocity in AUTO mode. If higher speeds
