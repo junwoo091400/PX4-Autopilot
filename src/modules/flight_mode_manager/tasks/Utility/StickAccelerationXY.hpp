@@ -81,6 +81,7 @@ private:
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::MPC_VEL_MANUAL>) _param_mpc_vel_manual,
+		(ParamFloat<px4::params::MPC_VEL_LAT_SC>) _param_mpc_vel_lat_sc,
 		(ParamFloat<px4::params::MPC_ACC_HOR>) _param_mpc_acc_hor,
 		(ParamFloat<px4::params::MPC_JERK_MAX>) _param_mpc_jerk_max,
 		(ParamFloat<px4::params::MPC_TILTMAX_AIR>) _param_mpc_tiltmax_air
