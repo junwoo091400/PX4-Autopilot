@@ -76,17 +76,12 @@ void FlightTaskManualPosition::_scaleSticks()
 	FlightTaskManualAltitude::_scaleSticks();
 
 	Vector2f stick_xy = _sticks.getPositionExpo().slice<2, 1>(0, 0);
+
+	Sticks::limitStickUnitLengthXY(stick_xy);
 	stick_xy(1) *= math::constrain(_param_mpc_vel_lat_sc.get(), 0.01f, 1.f);
 
 	if (stick_xy(0) < 0.f) {
 		stick_xy(0) *= math::constrain(_param_mpc_vel_back_sc.get(), 0.01f, 1.f);
-	}
-
-	/* Constrain length of stick inputs to 1 for xy */
-	const float mag = math::constrain(stick_xy.length(), 0.0f, 1.0f);
-
-	if (mag > 1.f) {
-		stick_xy = stick_xy / mag;
 	}
 
 	const float max_speed_from_estimator = _sub_vehicle_local_position.get().vxy_max;
