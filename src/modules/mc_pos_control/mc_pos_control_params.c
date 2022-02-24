@@ -354,6 +354,9 @@ PARAM_DEFINE_FLOAT(MPC_XY_ERR_MAX, 2.0f);
  * If velocity setpoint larger than MPC_XY_VEL_MAX is set, then
  * the setpoint will be capped to MPC_XY_VEL_MAX
  *
+ * The maximum lateral and backward speed can be set as a fraction
+ * of this parameter using MPC_VEL_LAT_SC and MPC_VEL_BACK_SC, respectively.
+ *
  * @unit m/s
  * @min 3.0
  * @max 20.0
