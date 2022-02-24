@@ -118,20 +118,6 @@ void LandDetector::Run()
 	_landed_hysteresis.set_state_and_update(_get_landed_state(), now_us);
 	_ground_effect_hysteresis.set_state_and_update(_get_ground_effect_state(), now_us);
 
-	if (!_dist_bottom_is_observable) {
-		// we consider the distance to the ground observable if the system is using a range sensor
-		_dist_bottom_is_observable = _vehicle_local_position.dist_bottom_sensor_bitfield &
-					     vehicle_local_position_s::DIST_BOTTOM_SENSOR_RANGE;
-	}
-
-	// Increase land detection time if not close to ground
-	if (_dist_bottom_is_observable && !_vehicle_local_position.dist_bottom_valid) {
-		_set_hysteresis_factor(3);
-
-	} else {
-		_set_hysteresis_factor(1);
-	}
-
 	const bool freefallDetected = _freefall_hysteresis.get_state();
 	const bool ground_contactDetected = _ground_contact_hysteresis.get_state();
 	const bool maybe_landedDetected = _maybe_landed_hysteresis.get_state();
