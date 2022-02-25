@@ -71,7 +71,7 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	}
 
 	_target_pose_filter.reset(Vector3f{NAN, NAN, NAN});
-	_target_pose_filter.setParameters(TARGET_POSITION_FILTER_NATURAL_FREQUENCY, TARGET_POSITION_FILTER_DAMPING_RATIO);
+	_target_pose_filter.setParameters(TARGET_POSE_FILTER_NATURAL_FREQUENCY, TARGET_POSE_FILTER_DAMPING_RATIO);
 
 	_offset_vector_filter.reset(Vector2f(0, 0));
 	_follow_angle_filter.reset(0.0f);
@@ -208,8 +208,13 @@ bool FlightTaskAutoFollowTarget::update()
 
 		// Second order target position filter to calculate kinematically feasible target position
 		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+<<<<<<< HEAD
 
 		const Vector3f target_position_filtered = calculate_target_position_filtered(pos_ned_est, vel_ned_est);
+=======
+		const Vector3f target_position_filtered = _target_pose_filter.getState();
+
+>>>>>>> Follow me : tidied second order filter implementation
 		const Vector2f offset_vector_filtered = calculate_offset_vector_filtered(vel_ned_est);
 		const Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered,
 							offset_vector_filtered);
