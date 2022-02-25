@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2021 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2022 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -181,7 +181,7 @@ void TargetEstimator::update()
 
 void TargetEstimator::update_filter_gains(filter_gains_s &filter_gains) const
 {
-	const float responsiveness_param = math::constrain(_param_nav_ft_rs.get(), .1F, 1.0F);
+	const float responsiveness_param = math::constrain(_param_flw_tgt_rs.get(), .1F, 1.0F);
 
 	if (fabsf(filter_gains.responsiveness - responsiveness_param) < FLT_EPSILON) {
 		// Parameter did not change since last execution. Skip calculations
