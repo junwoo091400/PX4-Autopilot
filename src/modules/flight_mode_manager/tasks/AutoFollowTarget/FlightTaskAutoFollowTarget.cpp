@@ -70,7 +70,9 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 		_position_setpoint = _position;
 	}
 
-	_target_position_filter.reset(Vector3f{NAN, NAN, NAN});
+	_target_pose_filter.reset(Vector3f{NAN, NAN, NAN});
+	_target_pose_filter.setParameters(TARGET_POSITION_FILTER_NATURAL_FREQUENCY, TARGET_POSITION_FILTER_DAMPING_RATIO);
+
 	_offset_vector_filter.reset(Vector2f(0, 0));
 	_follow_angle_filter.reset(0.0f);
 	_velocity_ff_scale.reset(0.0f);
@@ -187,32 +189,6 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	return drone_desired_position;
 }
 
-Vector3f FlightTaskAutoFollowTarget::calculate_target_position_filtered(Vector3f pos_ned_est, Vector3f vel_ned_est,
-		Vector3f acc_ned_est)
-{
-	// Reset the smoothness filter once the target position estimate is available
-	if (!PX4_ISFINITE(_target_position_filter.getState()(0)) || !PX4_ISFINITE(_target_position_filter.getState()(1))
-	    || !PX4_ISFINITE(_target_position_filter.getState()(2))) {
-		_target_position_filter.reset(pos_ned_est);
-	}
-
-	// Low-pass filter on target position.
-	_target_position_filter.setParameters(_deltatime, POSITION_FILTER_ALPHA);
-
-	if (_param_nav_ft_delc.get() == 0) {
-		_target_position_filter.update(pos_ned_est);
-
-	} else {
-		// Use a predicted target's position to compensate the filter delay to some extent.
-		const Vector3f target_predicted_position = predict_future_pos_ned_est(POSITION_FILTER_ALPHA, pos_ned_est, vel_ned_est,
-				acc_ned_est);
-		_target_position_filter.update(target_predicted_position);
-	}
-
-	return _target_position_filter.getState();
-
-}
-
 bool FlightTaskAutoFollowTarget::update()
 {
 	_follow_target_estimator_sub.update(&_follow_target_estimator);
@@ -222,7 +198,18 @@ bool FlightTaskAutoFollowTarget::update()
 		const Vector3f pos_ned_est{_follow_target_estimator.pos_est};
 		const Vector3f vel_ned_est{_follow_target_estimator.vel_est};
 		const Vector3f acc_ned_est{_follow_target_estimator.acc_est};
-		const Vector3f target_position_filtered = calculate_target_position_filtered(pos_ned_est, vel_ned_est, acc_ned_est);
+
+		// Reset the filter once the target position estimate is available
+		if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
+		|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
+		 !PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
+			_target_pose_filter.reset(pos_ned_est, vel_ned_est);
+		}
+
+		// Second order target position filter to calculate kinematically feasible target position
+		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+
+		const Vector3f target_position_filtered = calculate_target_position_filtered(pos_ned_est, vel_ned_est);
 		const Vector2f offset_vector_filtered = calculate_offset_vector_filtered(vel_ned_est);
 		const Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered,
 							offset_vector_filtered);
@@ -309,7 +296,7 @@ bool FlightTaskAutoFollowTarget::update()
 	}
 
 	// Publish status message for debugging
-	_target_position_filter.getState().copyTo(follow_target_status.pos_est_filtered);
+	_target_pose_filter.getState().copyTo(follow_target_status.pos_est_filtered);
 	follow_target_status.timestamp = hrt_absolute_time();
 	follow_target_status.emergency_ascent = _emergency_ascent;
 	follow_target_status.gimbal_pitch = _gimbal_pitch;
