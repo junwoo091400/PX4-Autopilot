@@ -52,6 +52,7 @@
 #include <uORB/topics/follow_target_estimator.h>
 #include <uORB/topics/gimbal_manager_set_attitude.h>
 #include <lib/mathlib/math/filter/AlphaFilter.hpp>
+#include <lib/mathlib/math/filter/second_order_reference_model.hpp>
 
 // Speed above which the target heading can change.
 // Used to prevent unpredictable jitter at low speeds.
@@ -92,6 +93,10 @@ static constexpr float DIRECTION_FILTER_ALPHA =	3.0f;
 // This is to avoid aggressive jerks when the target starts moving, because
 // velocity feed-forward is not applied at all while the target is stationary.
 static constexpr float VELOCITY_FF_FILTER_ALPHA = 1.0f;
+
+// Second order filter parameter for target position filter
+static constexpr float TARGET_POSITION_FILTER_NATURAL_FREQUENCY = 4.0f; // [rad/s]
+static constexpr float TARGET_POSITION_FILTER_DAMPING_RATIO = 0.7071;
 
 
 class FlightTaskAutoFollowTarget : public FlightTask
@@ -162,8 +167,7 @@ protected:
 
 	void point_gimbal_at(float xy_distance, float z_distance);
 	matrix::Vector2f calculate_offset_vector_filtered(matrix::Vector3f vel_ned_est);
-	matrix::Vector3f calculate_target_position_filtered(matrix::Vector3f pos_ned_est, matrix::Vector3f vel_ned_est,
-			matrix::Vector3f acc_ned_est);
+	matrix::Vector3f calculate_target_position_filtered(matrix::Vector3f pos_ned_est, matrix::Vector3f vel_ned_est);
 
 	// Calculate the desired position of the drone relative to the target using the offset_vector
 	matrix::Vector3f calculate_drone_desired_position(matrix::Vector3f target_position, matrix::Vector2f offset_vector);
@@ -178,8 +182,8 @@ protected:
 	follow_target_estimator_s _follow_target_estimator;
 	matrix::Vector2f _target_velocity_unit_vector;
 
-	// Lowpass filters for smoothingtarget position because it's used for setpoint generation
-	AlphaFilter<matrix::Vector3f> _target_position_filter;
+	// Second Order Filter to calculate kinematically feasible target position
+	SecondOrderReferenceModel<matrix::Vector3f> _target_pose_filter;
 
 	// Lowpass filter for smoothing the offset vector and have more dynamic shots when target changes direction
 	AlphaFilter<matrix::Vector2f> _offset_vector_filter;
