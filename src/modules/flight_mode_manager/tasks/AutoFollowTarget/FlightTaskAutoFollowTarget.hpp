@@ -95,8 +95,8 @@ static constexpr float DIRECTION_FILTER_ALPHA =	3.0f;
 static constexpr float VELOCITY_FF_FILTER_ALPHA = 1.0f;
 
 // Second order filter parameter for target position filter
-static constexpr float TARGET_POSITION_FILTER_NATURAL_FREQUENCY = 4.0f; // [rad/s]
-static constexpr float TARGET_POSITION_FILTER_DAMPING_RATIO = 0.7071;
+static constexpr float TARGET_POSE_FILTER_NATURAL_FREQUENCY = 4.0f; // [rad/s]
+static constexpr float TARGET_POSE_FILTER_DAMPING_RATIO = 0.7071;
 
 
 class FlightTaskAutoFollowTarget : public FlightTask
@@ -167,7 +167,6 @@ protected:
 
 	void point_gimbal_at(float xy_distance, float z_distance);
 	matrix::Vector2f calculate_offset_vector_filtered(matrix::Vector3f vel_ned_est);
-	matrix::Vector3f calculate_target_position_filtered(matrix::Vector3f pos_ned_est, matrix::Vector3f vel_ned_est);
 
 	// Calculate the desired position of the drone relative to the target using the offset_vector
 	matrix::Vector3f calculate_drone_desired_position(matrix::Vector3f target_position, matrix::Vector2f offset_vector);
