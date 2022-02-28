@@ -189,6 +189,27 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	return drone_desired_position;
 }
 
+void FlightTaskAutoFollowTarget::update_filtered_target_pose(Vector3f pos_ned_est, Vector3f vel_ned_est, Vector3f acc_ned_est) {
+	// Reset the filter once the target position estimate is available
+	if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
+	|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
+		!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
+		_target_pose_filter.reset(pos_ned_est, vel_ned_est);
+	}
+
+	if (_param_nav_ft_delc.get() == 0) {
+		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+	} else {
+		// Use a predicted target's position to compensate the alpha filter delay in Target estimator to some extent.
+		const Vector3f target_predicted_position = predict_future_pos_ned_est(POSITION_FILTER_ALPHA, pos_ned_est, vel_ned_est, acc_ned_est);
+		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est + acc_ned_est * POSITION_FILTER_ALPHA);
+	}
+
+	// Second order target position filter to calculate kinematically feasible target position
+	_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+
+}
+
 bool FlightTaskAutoFollowTarget::update()
 {
 	_follow_target_estimator_sub.update(&_follow_target_estimator);
@@ -199,25 +220,11 @@ bool FlightTaskAutoFollowTarget::update()
 		const Vector3f vel_ned_est{_follow_target_estimator.vel_est};
 		const Vector3f acc_ned_est{_follow_target_estimator.acc_est};
 
-		// Reset the filter once the target position estimate is available
-		if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
-		|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
-		 !PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
-			_target_pose_filter.reset(pos_ned_est, vel_ned_est);
-		}
-
-		// Second order target position filter to calculate kinematically feasible target position
-		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
-<<<<<<< HEAD
-
-		const Vector3f target_position_filtered = calculate_target_position_filtered(pos_ned_est, vel_ned_est);
-=======
+		update_filtered_target_pose(pos_ned_est, vel_ned_est, acc_ned_est);
 		const Vector3f target_position_filtered = _target_pose_filter.getState();
 
->>>>>>> Follow me : tidied second order filter implementation
 		const Vector2f offset_vector_filtered = calculate_offset_vector_filtered(vel_ned_est);
-		const Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered,
-							offset_vector_filtered);
+		const Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered, offset_vector_filtered);
 
 		// Set position and velocity setpoints
 		float desired_velocity_ff_scale = 0.0f;  // Used to ramp up velocity feedforward, avoiding harsh jumps in the setpoints
