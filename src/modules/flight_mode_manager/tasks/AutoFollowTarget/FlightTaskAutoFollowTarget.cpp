@@ -201,8 +201,9 @@ void FlightTaskAutoFollowTarget::update_filtered_target_pose(Vector3f pos_ned_es
 		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
 	} else {
 		// Use a predicted target's position to compensate the alpha filter delay in Target estimator to some extent.
-		const Vector3f target_predicted_position = predict_future_pos_ned_est(POSITION_FILTER_ALPHA, pos_ned_est, vel_ned_est, acc_ned_est);
-		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est + acc_ned_est * POSITION_FILTER_ALPHA);
+		const Vector3f predicted_target_position = predict_future_pos_ned_est(POSITION_FILTER_ALPHA, pos_ned_est, vel_ned_est, acc_ned_est);
+		const Vector3f predicted_target_velocity = vel_ned_est + acc_ned_est * POSITION_FILTER_ALPHA;
+		_target_pose_filter.update(_deltatime, predicted_target_position, predicted_target_velocity);
 	}
 
 	// Second order target position filter to calculate kinematically feasible target position
