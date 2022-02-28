@@ -171,6 +171,9 @@ protected:
 	// Calculate the desired position of the drone relative to the target using the offset_vector
 	matrix::Vector3f calculate_drone_desired_position(matrix::Vector3f target_position, matrix::Vector2f offset_vector);
 
+	// Calculate
+	void update_filtered_target_pose(Vector3f pos_ned_est, Vector3f vel_ned_est, Vector3f acc_ned_est);
+
 	TargetEstimator _target_estimator;
 
 	// Follow angle is defined with 0 degrees following from front, and then clockwise rotation
