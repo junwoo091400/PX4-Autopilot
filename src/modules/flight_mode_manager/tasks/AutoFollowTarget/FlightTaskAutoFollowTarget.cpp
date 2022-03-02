@@ -209,7 +209,6 @@ bool FlightTaskAutoFollowTarget::update()
 		// Second order target position filter to calculate kinematically feasible target position
 		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
 
-		update_filtered_target_pose(pos_ned_est, vel_ned_est, acc_ned_est);
 		const Vector3f target_position_filtered = _target_pose_filter.getState();
 
 		const Vector2f offset_vector_filtered = calculate_offset_vector_filtered(vel_ned_est);
