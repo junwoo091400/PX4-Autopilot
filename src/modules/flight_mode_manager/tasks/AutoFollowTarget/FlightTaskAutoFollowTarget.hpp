@@ -54,10 +54,6 @@
 #include <lib/mathlib/math/filter/AlphaFilter.hpp>
 #include <lib/mathlib/math/filter/second_order_reference_model.hpp>
 
-// Speed above which the target heading can change.
-// Used to prevent unpredictable jitter at low speeds.
-static constexpr float MINIMUM_SPEED_FOR_HEADING_CHANGE = 0.1f;
-
 // Minimum distance between drone and target for the drone to do any yaw control.
 static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
 
@@ -73,30 +69,20 @@ static constexpr float ALT_ACCEPTANCE_THRESHOLD = 3.0f;
 // is too close to the ground (below MINIMUM_SAFETY_ALTITUDE)
 static constexpr float EMERGENCY_ASCENT_SPEED = 0.2f;
 
-// Filter on setpoints for smooth cinematic experience:
-// Lowpass applied to the estimated position of the target
-// before using it as control input
-static constexpr float POSITION_FILTER_ALPHA =	1.5f;
-
-// Filter on setpoints for smooth cinematic experience:
-// Lowpass applied to the follow-me angle setting, to ensure
-// smooth and circular transitions between settings
-static constexpr float FOLLOW_ANGLE_FILTER_ALPHA = 3.0f;
-
-// Filter on setpoints for smooth cinematic experience:
-// Lowpass applied to the actual NED direction how the drone is facing the target
-// regarless of the setting. Used for dynamic tracking angles when the target makes a turn
-static constexpr float DIRECTION_FILTER_ALPHA =	3.0f;
-
-// Filter on setpoints for smooth cinematic experience:
-// Lowpass applied for ramping up / down velocity feedforward term.
-// This is to avoid aggressive jerks when the target starts moving, because
-// velocity feed-forward is not applied at all while the target is stationary.
-static constexpr float VELOCITY_FF_FILTER_ALPHA = 1.0f;
-
 // Second order filter parameter for target position filter
-static constexpr float TARGET_POSE_FILTER_NATURAL_FREQUENCY = 4.0f; // [rad/s]
+static constexpr float TARGET_POSE_FILTER_NATURAL_FREQUENCY = 1.0f; // [rad/s]
 static constexpr float TARGET_POSE_FILTER_DAMPING_RATIO = 0.7071;
+
+// [m/s] Velocity deadzone for which, under this velocity, the target orientation
+// tracking will freeze, since orientation can be noisy in low velocities
+static constexpr float TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING = 0.5;
+
+// [m/s] Velocity threshold, where if target's speed is higher than this value,
+// target tracking will be fully active (with full orbit angular speed).
+static constexpr float TARGET_VELOCITY_THRESHOLD_FOR_ORIENTATION_TRACKING = 1.5;
+
+// [m/s] Velocity limit to limit orbital angular rate depending on follow distance
+static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
 
 
 class FlightTaskAutoFollowTarget : public FlightTask
@@ -154,38 +140,21 @@ protected:
 	 */
 	float update_follow_me_angle_setting(int param_nav_ft_fs) const;
 
-	/**
-	 * Predict target's position through forward integration of its currently estimated position, velocity and acceleration.
-	 *
-	 * @param deltatime [s] prediction horizon
-	 * @return Future prediction of target position
-	 */
-	matrix::Vector3f predict_future_pos_ned_est(float deltatime, const matrix::Vector3f &pos_ned_est,
-			const matrix::Vector3f &vel_ned_est,
-			const matrix::Vector3f &acc_ned_est) const;
-
-
 	void point_gimbal_at(float xy_distance, float z_distance);
-	matrix::Vector2f calculate_offset_vector_filtered(matrix::Vector3f vel_ned_est);
-
-	// Calculate the desired position of the drone relative to the target using the offset_vector
-	matrix::Vector3f calculate_drone_desired_position(matrix::Vector3f target_position, matrix::Vector2f offset_vector);
-
-	TargetEstimator _target_estimator;
-
-	// Follow angle is defined with 0 degrees following from front, and then clockwise rotation
-	float _follow_angle_rad{0.0f};
-	AlphaFilter<float> _follow_angle_filter;
 
 	// Estimator for target position and velocity
+	TargetEstimator _target_estimator;
 	follow_target_estimator_s _follow_target_estimator;
 	matrix::Vector2f _target_velocity_unit_vector;
 
 	// Second Order Filter to calculate kinematically feasible target position
 	SecondOrderReferenceModel<matrix::Vector3f> _target_pose_filter;
 
-	// Lowpass filter for smoothing the offset vector and have more dynamic shots when target changes direction
-	AlphaFilter<matrix::Vector2f> _offset_vector_filter;
+	// Follow angle is defined with 0 degrees following from front, and then clockwise rotation
+	float _follow_angle_rad{0.0f};
+
+	// Estimated (Filtered) target orientation setpoint
+	float _estimated_target_orientation_rad{0.0f};
 
 	// Lowpass filter assuming  values 0-1, for avoiding big steps in velocity feedforward
 	AlphaFilter<float> _velocity_ff_scale;
