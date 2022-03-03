@@ -189,27 +189,52 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	return drone_desired_position;
 }
 
+void FlightTaskAutoFollowTarget::update_target_pose_filter(follow_target_estimator_s follow_target_estimator) {
+	const Vector3f pos_ned_est{follow_target_estimator.pos_est};
+	const Vector3f vel_ned_est{follow_target_estimator.vel_est};
+
+	// Reset the Target pose filter once the target position estimate is available
+	if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
+	|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
+		!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
+		_target_pose_filter.reset(pos_ned_est, vel_ned_est);
+	}
+
+	// Second order target position filter to calculate kinematically feasible target position
+	_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+}
+
+float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velocity, float max_orbital_rate) {
+
+	const float target_velocity_norm = target_velocity.xy().norm(); // Get 2D projected target speed [m/s]
+
+	// Depending on the target velocity, freeze or set new target orientatino value
+	if(target_velocity_norm >= TARGET_VELOCITY_THRESHOLD_FOR_ORIENTATION_TRACKING) {
+		_target_orientation_rad = atan2f(target_velocity(1), target_velocity(0));
+	}
+	else {
+		_target_orientation_rad = _target_orientation_rad;
+	}
+}
+
 bool FlightTaskAutoFollowTarget::update()
 {
 	_follow_target_estimator_sub.update(&_follow_target_estimator);
-	follow_target_status_s follow_target_status{};
+
+	follow_target_status_s follow_target_status{}; // Debugging uORB message for follow target status
 
 	if (_follow_target_estimator.timestamp > 0 && _follow_target_estimator.valid) {
-		const Vector3f pos_ned_est{_follow_target_estimator.pos_est};
-		const Vector3f vel_ned_est{_follow_target_estimator.vel_est};
-		const Vector3f acc_ned_est{_follow_target_estimator.acc_est};
-
-		// Reset the filter once the target position estimate is available
-		if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
-		|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
-			!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
-			_target_pose_filter.reset(pos_ned_est, vel_ned_est);
-		}
-
-		// Second order target position filter to calculate kinematically feasible target position
-		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+		// Update second order target pose filter
+		update_target_pose_filter(_follow_target_estimator);
 
 		const Vector3f target_position_filtered = _target_pose_filter.getState();
+		const Vector3f target_velocity_filtered = _target_pose_filter.getRate();
+
+		// Calculate maximum orbital angular rate, depending on the follow distance
+		const float max_orbit_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _param_nav_ft_dst.get();
+
+		// Calculate target orientation to track [rad]
+		_target_orientation_rad = update_target_orientation(target_velocity_filtered.xy(), max_orbit_rate);
 
 		const Vector2f offset_vector_filtered = calculate_offset_vector_filtered(vel_ned_est);
 		const Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered, offset_vector_filtered);
@@ -345,13 +370,6 @@ float FlightTaskAutoFollowTarget::update_follow_me_angle_setting(int param_nav_f
 	// Default: follow from behind
 	return FOLLOW_PERSPECTIVE_BEHIND_ANGLE_DEG;
 }
-
-Vector3f FlightTaskAutoFollowTarget::predict_future_pos_ned_est(float deltatime, const Vector3f &pos_ned_est,
-		const Vector3f &vel_ned_est, const Vector3f &acc_ned_est) const
-{
-	return pos_ned_est + vel_ned_est * deltatime + 0.5f * acc_ned_est * deltatime * deltatime;
-}
-
 
 void FlightTaskAutoFollowTarget::point_gimbal_at(float xy_distance, float z_distance)
 {
