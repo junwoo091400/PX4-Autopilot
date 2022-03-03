@@ -51,8 +51,8 @@
 #include <uORB/topics/follow_target_status.h>
 #include <uORB/topics/follow_target_estimator.h>
 #include <uORB/topics/gimbal_manager_set_attitude.h>
-#include <lib/mathlib/math/filter/AlphaFilter.hpp>
 #include <lib/mathlib/math/filter/second_order_reference_model.hpp>
+#include <lib/matrix/matrix/helper_functions.hpp>
 
 // Minimum distance between drone and target for the drone to do any yaw control.
 static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
@@ -68,6 +68,9 @@ static constexpr float ALT_ACCEPTANCE_THRESHOLD = 3.0f;
 // Vertical ascent speed when the drone detects that it
 // is too close to the ground (below MINIMUM_SAFETY_ALTITUDE)
 static constexpr float EMERGENCY_ASCENT_SPEED = 0.2f;
+
+// [s] If the target estimator output isn't updated longer than this, reset pose filter.
+static constexpr float TARGET_ESTIMATOR_TIMEOUT_SECONDS = 1.5;
 
 // Second order filter parameter for target position filter
 static constexpr float TARGET_POSE_FILTER_NATURAL_FREQUENCY = 1.0f; // [rad/s]
@@ -145,19 +148,24 @@ protected:
 	// Estimator for target position and velocity
 	TargetEstimator _target_estimator;
 	follow_target_estimator_s _follow_target_estimator;
-	matrix::Vector2f _target_velocity_unit_vector;
+
+	// Last target estimator timestamp to handle timeout filter reset
+	uint16_t _last_target_estimator_timestamp{0};
 
 	// Second Order Filter to calculate kinematically feasible target position
 	SecondOrderReferenceModel<matrix::Vector3f> _target_pose_filter;
 
+	// Estimated (Filtered) target orientation setpoint
+	float _target_orientation_rad{0.0f};
+
 	// Follow angle is defined with 0 degrees following from front, and then clockwise rotation
 	float _follow_angle_rad{0.0f};
 
-	// Estimated (Filtered) target orientation setpoint
-	float _estimated_target_orientation_rad{0.0f};
+	// Current orbit angle measured in global frame, against the target
+	float _current_orbit_angle{0.0f};
 
-	// Lowpass filter assuming  values 0-1, for avoiding big steps in velocity feedforward
-	AlphaFilter<float> _velocity_ff_scale;
+	// If target speed is too low (below deadzone), don't set velocity setpoints since it's estimate can be noisy
+	bool _dont_follow_target_velocity{true};
 
 	// NOTE: If more of these internal state variables come into existence, it
 	// would make sense to create an internal state machine with a single enum
