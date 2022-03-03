@@ -98,7 +98,7 @@ void FlightTaskAutoFollowTarget::update_target_pose_filter(follow_target_estimat
 
 float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velocity) {
 
-	const float target_velocity_norm = target_velocity.xy().norm(); // Get 2D projected target speed [m/s]
+	const float target_velocity_norm = target_velocity.norm(); // Get 2D projected target speed [m/s]
 
 	// Depending on the target velocity, freeze or set new target orientatino value
 	if(target_velocity_norm >= TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING) {
@@ -109,23 +109,24 @@ float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velo
 		_target_orientation_rad = _target_orientation_rad;
 		_dont_follow_target_velocity = true;
 	}
+	return _target_orientation_rad;
 }
 
 float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, float follow_angle, float max_orbital_rate) {
 	// Raw target orbit (setpoint) angle
-	const float raw_target_orbit_angle = wrap_pi(target_orientation + follow_angle);
+	const float raw_target_orbit_angle = matrix::wrap_pi(target_orientation + follow_angle);
 
 	// Calculate orbit angle error
-	const float orbit_angle_error = wrap_pi(raw_target_orbit_angle - _current_orbit_angle);
+	const float orbit_angle_error = matrix::wrap_pi(raw_target_orbit_angle - _current_orbit_angle);
 
 	// Calculate maximum orbital angle step we can take for this iteration
-	const float max_orbital_step = max_orbital_rate * _deltaTime;
+	const float max_orbital_step = max_orbital_rate * _deltatime;
 
 	if(fabsf(orbit_angle_error) < max_orbital_step) {
-		return orbit raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
+		return raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
 	}
 	else {
-		return (_current_orbit_angle + sign(orbit_angle_error * max_orbital_step)); // Take a step
+		return (_current_orbit_angle + matrix::sign(orbit_angle_error * max_orbital_step)); // Take a step
 	}
 }
 
@@ -188,7 +189,7 @@ bool FlightTaskAutoFollowTarget::update()
 		const float new_follow_angle_rad = math::radians(update_follow_me_angle_setting(_param_nav_ft_fs.get()));
 
 		// Update the new orbit angle (rate constrained)
-		_current_orbital_angle = update_orbit_angle(_target_orientation_rad, new_follow_angle_rad, max_orbit_rate);
+		_current_orbit_angle = update_orbit_angle(_target_orientation_rad, new_follow_angle_rad, max_orbit_rate);
 
 		// Calculate desired position by applying orbit angle around the target
 		Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered);
