@@ -73,100 +73,75 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	_target_pose_filter.reset(Vector3f{NAN, NAN, NAN});
 	_target_pose_filter.setParameters(TARGET_POSE_FILTER_NATURAL_FREQUENCY, TARGET_POSE_FILTER_DAMPING_RATIO);
 
-	_offset_vector_filter.reset(Vector2f(0, 0));
-	_follow_angle_filter.reset(0.0f);
-	_velocity_ff_scale.reset(0.0f);
-
-	// Initialize to something such that the drone at least points at the target, even if it's the wrong angle for the perspective.
-	// The drone will move into position as soon as the target starts moving and its heading becomes known.
-	Vector2f current_drone_heading_2d{cosf(_yaw), -sinf(_yaw)};
-
-	if (PX4_ISFINITE(current_drone_heading_2d(0)) && PX4_ISFINITE(current_drone_heading_2d(1))) {
-		_offset_vector_filter.reset(current_drone_heading_2d);
-
-	} else {
-		_offset_vector_filter.reset(Vector2f(1.0f, 0.0f));
-	}
-
 	_yawspeed_setpoint = 0.f;
 
 	return ret;
 }
 
-Vector2f FlightTaskAutoFollowTarget::calculate_offset_vector_filtered(Vector3f vel_ned_est)
-{
-	if (_param_nav_ft_fs.get() == FOLLOW_PERSPECTIVE_NONE) {
-		// NOTE: Switching between NONE any any other setting currently causes a jump in the setpoints
-		_offset_vector_filter.reset(Vector2f{0, 0});
+void FlightTaskAutoFollowTarget::update_target_pose_filter(follow_target_estimator_s follow_target_estimator) {
+	bool target_estimator_timeout = (follow_target_estimator.timestamp - _last_target_estimator_timestamp) > TARGET_ESTIMATOR_TIMEOUT_SECONDS;
 
-	} else {
-		// Define and rotate offset vector based on follow-me perspective setting
-		const float new_follow_angle_rad = math::radians(update_follow_me_angle_setting(_param_nav_ft_fs.get()));
+	const Vector3f pos_ned_est{follow_target_estimator.pos_est};
+	const Vector3f vel_ned_est{follow_target_estimator.vel_est};
 
-		// Use shortest rotation to get to the new angle
-		// Example: if the current angle setting is 270, and the new angle setting is 0, it's
-		// faster to rotate to 360 rather than 0.
-		// Usually the controller would automatically take the shortest path. But here some trickery
-		// is necessary because the yaw angle is run through a low-pass filter.
-		if (_follow_angle_rad - new_follow_angle_rad  > M_PI_F) {
-			_follow_angle_rad = new_follow_angle_rad + M_TWOPI_F;
-
-		} else if (_follow_angle_rad - new_follow_angle_rad  < -M_PI_F) {
-			_follow_angle_rad = new_follow_angle_rad - M_TWOPI_F;
-
-		} else {
-			_follow_angle_rad = new_follow_angle_rad;
-		}
-
-		// Lowpass the angle setting to smoothly transition to a new perspective when the user makes a change.
-		// In particular this has an effect when the setting is modified by 180 degrees, in which case the drone
-		// would pass above the target without the filter. The filtering makes it so that the drone flies around
-		// the target into the new postion.
-		_follow_angle_filter.setParameters(_deltatime, FOLLOW_ANGLE_FILTER_ALPHA);
-		_follow_angle_filter.update(_follow_angle_rad);
-
-		// Wrap around 360 degrees
-		if (_follow_angle_filter.getState() > M_TWOPI_F) {
-			_follow_angle_filter.reset(_follow_angle_filter.getState() - M_TWOPI_F);
-			_follow_angle_rad = _follow_angle_rad - M_TWOPI_F;
-
-		} else if (_follow_angle_filter.getState() < -M_TWOPI_F) {
-			_follow_angle_filter.reset(_follow_angle_filter.getState() + M_TWOPI_F);
-			_follow_angle_rad = _follow_angle_rad + M_TWOPI_F;
-		}
-
-		// Assume the target's velocity vector is its heading and use it to construct the offset vector
-		// such that drone_pos_setpoint = target_pose + offset_vector
-		if (vel_ned_est.longerThan(MINIMUM_SPEED_FOR_HEADING_CHANGE) &&
-		    vel_ned_est.longerThan(FLT_EPSILON)) {
-			// Compute offset vector relative to target position. At the same time the offset vector defines the
-			// vieweing angle of the drone
-			_target_velocity_unit_vector = Vector2f(vel_ned_est.xy()).unit_or_zero();
-		}
-
-		float offset_x = (float)cos(_follow_angle_filter.getState()) * _target_velocity_unit_vector(0) - (float)sin(
-					 _follow_angle_filter.getState()) * _target_velocity_unit_vector(1);
-		float offset_y = (float)sin(_follow_angle_filter.getState()) * _target_velocity_unit_vector(0) + (float)cos(
-					 _follow_angle_filter.getState()) * _target_velocity_unit_vector(1);
-
-		// Lowpass on the offset vector to have smooth transitions when the target turns, or when the
-		// setting for the perspective is changed by the user. This introduces only a delay in the
-		// tracking / viewing angle without disadvantages
-		_offset_vector_filter.setParameters(_deltatime, DIRECTION_FILTER_ALPHA);
-		_offset_vector_filter.update(Vector2f{offset_x, offset_y});
+	// Reset the Target pose filter if it's state is not finite or estimator has timed out
+	if (target_estimator_timeout || !PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
+	|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
+		!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
+		_target_pose_filter.reset(pos_ned_est, vel_ned_est);
+		_last_target_estimator_timestamp = follow_target_estimator.timestamp; // Reset last estimator received timestamp
 	}
 
-	return _offset_vector_filter.getState();
+	// Second order target position filter to calculate kinematically feasible target position
+	_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
 }
 
-Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f target_position, Vector2f offset_vector)
+float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velocity) {
+
+	const float target_velocity_norm = target_velocity.xy().norm(); // Get 2D projected target speed [m/s]
+
+	// Depending on the target velocity, freeze or set new target orientatino value
+	if(target_velocity_norm >= TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING) {
+		_target_orientation_rad = atan2f(target_velocity(1), target_velocity(0));
+		_dont_follow_target_velocity = false;
+	}
+	else {
+		_target_orientation_rad = _target_orientation_rad;
+		_dont_follow_target_velocity = true;
+	}
+}
+
+float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, float follow_angle, float max_orbital_rate) {
+	// Raw target orbit (setpoint) angle
+	const float raw_target_orbit_angle = wrap_pi(target_orientation + follow_angle);
+
+	// Calculate orbit angle error
+	const float orbit_angle_error = wrap_pi(raw_target_orbit_angle - _current_orbit_angle);
+
+	// Calculate maximum orbital angle step we can take for this iteration
+	const float max_orbital_step = max_orbital_rate * _deltaTime;
+
+	if(fabsf(orbit_angle_error) < max_orbital_step) {
+		return orbit raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
+	}
+	else {
+		return (_current_orbit_angle + sign(orbit_angle_error * max_orbital_step)); // Take a step
+	}
+}
+
+Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f target_position)
 {
 	Vector3f drone_desired_position{NAN, NAN, NAN};
 
 	// Correct the desired distance by the target scale determined from object detection
 	const float desired_distance_to_target = _param_nav_ft_dst.get();
-	drone_desired_position.xy() = Vector2f(target_position.xy()) +
-				      offset_vector.unit_or_zero() * desired_distance_to_target;
+
+	// Offset from the Target
+	Vector2f offset_vector = Vector2f(cos(_current_orbit_angle), sin(_current_orbit_angle)) * desired_distance_to_target;
+
+	// Calculate desired 2D position
+	drone_desired_position.xy() = Vector2f(target_position.xy()) + offset_vector;
+
 
 	// Z-position based off curent and initial target altitude
 	// TODO: Parameter NAV_MIN_FT_HT has been repurposed to be used as the desired
@@ -189,33 +164,6 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	return drone_desired_position;
 }
 
-void FlightTaskAutoFollowTarget::update_target_pose_filter(follow_target_estimator_s follow_target_estimator) {
-	const Vector3f pos_ned_est{follow_target_estimator.pos_est};
-	const Vector3f vel_ned_est{follow_target_estimator.vel_est};
-
-	// Reset the Target pose filter once the target position estimate is available
-	if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
-	|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
-		!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
-		_target_pose_filter.reset(pos_ned_est, vel_ned_est);
-	}
-
-	// Second order target position filter to calculate kinematically feasible target position
-	_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
-}
-
-float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velocity, float max_orbital_rate) {
-
-	const float target_velocity_norm = target_velocity.xy().norm(); // Get 2D projected target speed [m/s]
-
-	// Depending on the target velocity, freeze or set new target orientatino value
-	if(target_velocity_norm >= TARGET_VELOCITY_THRESHOLD_FOR_ORIENTATION_TRACKING) {
-		_target_orientation_rad = atan2f(target_velocity(1), target_velocity(0));
-	}
-	else {
-		_target_orientation_rad = _target_orientation_rad;
-	}
-}
 
 bool FlightTaskAutoFollowTarget::update()
 {
@@ -234,27 +182,27 @@ bool FlightTaskAutoFollowTarget::update()
 		const float max_orbit_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _param_nav_ft_dst.get();
 
 		// Calculate target orientation to track [rad]
-		_target_orientation_rad = update_target_orientation(target_velocity_filtered.xy(), max_orbit_rate);
+		_target_orientation_rad = update_target_orientation(target_velocity_filtered.xy());
 
-		const Vector2f offset_vector_filtered = calculate_offset_vector_filtered(vel_ned_est);
-		const Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered, offset_vector_filtered);
+		// Get the follow angle from the parameter
+		const float new_follow_angle_rad = math::radians(update_follow_me_angle_setting(_param_nav_ft_fs.get()));
 
-		// Set position and velocity setpoints
-		float desired_velocity_ff_scale = 0.0f;  // Used to ramp up velocity feedforward, avoiding harsh jumps in the setpoints
+		// Update the new orbit angle (rate constrained)
+		_current_orbital_angle = update_orbit_angle(_target_orientation_rad, new_follow_angle_rad, max_orbit_rate);
+
+		// Calculate desired position by applying orbit angle around the target
+		Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered);
 
 		if (PX4_ISFINITE(drone_desired_position(0)) && PX4_ISFINITE(drone_desired_position(1))
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
-
-				// Only apply feed-forward velocity while the target is moving
-				if (vel_ned_est.longerThan(MINIMUM_SPEED_FOR_HEADING_CHANGE)) {
-					desired_velocity_ff_scale = 1.0f;
-
+				if(_dont_follow_target_velocity) {
+					_velocity_setpoint.setZero(); // If target velocity is too low to follow reliably, don't follow
 				}
-
-				// Velocity setpoints is a feedforward term derived from position setpoints
-				_velocity_setpoint = (drone_desired_position - _position_setpoint) / _deltatime * _velocity_ff_scale.getState();
+				else {
+					_velocity_setpoint = target_velocity_filtered; // Else, follow target velocity directly
+				}
 				_position_setpoint = drone_desired_position;
 
 			} else {
@@ -268,9 +216,6 @@ bool FlightTaskAutoFollowTarget::update()
 			_position_setpoint = _position;
 			_velocity_setpoint.setZero();
 		}
-
-		_velocity_ff_scale.setParameters(_deltatime, VELOCITY_FF_FILTER_ALPHA);
-		_velocity_ff_scale.update(desired_velocity_ff_scale);
 
 		// Emergency ascent when too close to the ground
 		_emergency_ascent = PX4_ISFINITE(_dist_to_ground) && _dist_to_ground < MINIMUM_SAFETY_ALTITUDE;
