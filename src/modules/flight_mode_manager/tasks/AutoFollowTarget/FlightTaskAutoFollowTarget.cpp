@@ -199,9 +199,6 @@ bool FlightTaskAutoFollowTarget::update()
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
 				if(_dont_follow_target_velocity) {
-					_velocity_setpoint.setZero(); // If target velocity is too low to follow reliably, don't follow
-				}
-				else {
 					_velocity_setpoint = target_velocity_filtered; // Else, follow target velocity directly
 				}
 				_position_setpoint = drone_desired_position;
