@@ -267,10 +267,17 @@ bool FlightTaskAutoFollowTarget::update()
 	}
 
 	// Publish status message for debugging
-	_target_pose_filter.getState().copyTo(follow_target_status.pos_est_filtered);
 	follow_target_status.timestamp = hrt_absolute_time();
+	_target_pose_filter.getState().copyTo(follow_target_status.pos_est_filtered);
+	_target_pose_filter.getRate().copyTo(follow_target_status.vel_est_filtered);
+
+	follow_target_status.tracked_target_orientation = _target_orientation_rad;
+	follow_target_status.follow_angle = _follow_angle_rad;
+	follow_target_status.current_orbit_angle = _current_orbit_angle;
+
 	follow_target_status.emergency_ascent = _emergency_ascent;
 	follow_target_status.gimbal_pitch = _gimbal_pitch;
+
 	_follow_target_status_pub.publish(follow_target_status);
 
 	_constraints.want_takeoff = _checkTakeoff();
