@@ -126,7 +126,7 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, f
 		return raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
 	}
 	else {
-		return (_current_orbit_angle + matrix::sign(orbit_angle_error * max_orbital_step)); // Take a step
+		return (_current_orbit_angle + matrix::sign(orbit_angle_error) * max_orbital_step); // Take a step
 	}
 }
 
