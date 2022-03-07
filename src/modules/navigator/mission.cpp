@@ -661,6 +661,10 @@ Mission::update_mission()
 			_mission.current_seq = 0;
 			_current_mission_index = 0;
 			reset_command_cache();
+
+		} else {
+			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: previous mission is uploaded.");
+			events::send(events::ID("mission_restore_old"), events::Log::Error, "Mission rejected: previous mission is uploaded");
 		}
 	}
 
