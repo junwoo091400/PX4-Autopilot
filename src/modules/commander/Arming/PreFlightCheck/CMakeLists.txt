@@ -48,6 +48,7 @@ px4_add_library(PreFlightCheck
 	checks/ekf2Check.cpp
 	checks/failureDetectorCheck.cpp
 	checks/manualControlCheck.cpp
+	checks/modeCheck.cpp
 	checks/cpuResourceCheck.cpp
 	checks/externalUpdateCheck.cpp
 	checks/sdcardCheck.cpp
