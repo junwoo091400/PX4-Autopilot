@@ -65,7 +65,7 @@ VtolLand::on_active()
 		case vtol_land_state::MOVE_TO_LOITER: {
 				_mission_item.altitude = _navigator->get_home_position()->alt + _param_descend_alt_rel_m.get();
 				_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
-				_mission_item.loiter_radius = _navigator->get_loiter_radius();
+				_mission_item.loiter_radius = _param_rtl_loiter_rad.get();
 
 				_navigator->get_mission_result()->finished = false;
 				_navigator->set_mission_result_updated();
@@ -185,7 +185,7 @@ VtolLand::set_loiter_position()
 
 	_mission_item.altitude_is_relative = false;
 
-	_mission_item.loiter_radius = _navigator->get_loiter_radius();
+	_mission_item.loiter_radius = _param_rtl_loiter_rad.get();
 	_mission_item.origin = ORIGIN_ONBOARD;
 
 	_navigator->get_mission_result()->finished = false;

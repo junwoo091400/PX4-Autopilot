@@ -74,7 +74,8 @@ private:
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::VTO_LOITER_ALT>) _param_loiter_alt,
 		(ParamFloat<px4::params::RTL_DESCEND_ALT>) _param_descend_alt_rel_m,
-		(ParamFloat<px4::params::RTL_RETURN_ALT>) _param_return_alt_rel_m
+		(ParamFloat<px4::params::RTL_RETURN_ALT>) _param_return_alt_rel_m,
+		(ParamFloat<px4::params::RTL_LOITER_RAD>) _param_rtl_loiter_rad
 	)
 
 	void set_loiter_position();
