@@ -80,6 +80,7 @@ private:
 
 	bool _has_takeoff{false};
 	bool _has_landing{false};
+	bool _has_vtol_takeoff{false};
 
 public:
 	MissionFeasibilityChecker(Navigator *navigator) : _navigator(navigator) {}

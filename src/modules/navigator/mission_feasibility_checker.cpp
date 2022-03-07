@@ -118,7 +118,20 @@ MissionFeasibilityChecker::checkRotarywing(const mission_s &mission, float home_
 	 * Perform check and issue feedback to the user
 	 * Mission is only marked as feasible if takeoff check passes
 	 */
-	return checkTakeoff(mission, home_alt);
+	bool resTakeoff = checkTakeoff(mission, home_alt);
+	bool resVTOLLanding = checkVTOLLanding(mission);
+	bool hasVTOLLanding = _has_landing && resVTOLLanding;
+
+	bool res = resTakeoff && !_has_vtol_takeoff && !hasVTOLLanding;
+
+	if (_has_vtol_takeoff || hasVTOLLanding) {
+		mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+				     "Mission rejected: plan has VTOL items but vehicle isn't a VTOL.\t");
+		events::send(events::ID("navigator_vtol_mis_on_mc"), {events::Log::Error, events::LogInternal::Info},
+			     "Mission rejected: plan has VTOL items but vehicle isn't a VTOL");
+	}
+
+	return res;
 }
 
 bool
@@ -128,8 +141,17 @@ MissionFeasibilityChecker::checkFixedwing(const mission_s &mission, float home_a
 	bool resTakeoff = checkTakeoff(mission, home_alt);
 	bool resLanding = checkFixedWingLanding(mission);
 
+	bool res = resTakeoff && !_has_vtol_takeoff && resLanding;
+
+	if (_has_vtol_takeoff) {
+		mavlink_log_critical(_navigator->get_mavlink_log_pub(),
+				     "Mission rejected: plan has VTOL items but vehicle isn't a VTOL.\t");
+		events::send(events::ID("navigator_vtol_mis_on_fw"), {events::Log::Error, events::LogInternal::Info},
+			     "Mission rejected: plan has VTOL items but vehicle isn't a VTOL");
+	}
+
 	/* Mission is only marked as feasible if all checks return true */
-	return (resTakeoff && resLanding);
+	return res;
 }
 
 bool
@@ -376,6 +398,7 @@ MissionFeasibilityChecker::checkTakeoff(const mission_s &mission, float home_alt
 
 			// tell that mission has a takeoff waypoint
 			_has_takeoff = true;
+			_has_vtol_takeoff = (missionitem.nav_cmd == NAV_CMD_VTOL_TAKEOFF);
 
 			// tell that a takeoff waypoint is the first "waypoint"
 			// mission item
