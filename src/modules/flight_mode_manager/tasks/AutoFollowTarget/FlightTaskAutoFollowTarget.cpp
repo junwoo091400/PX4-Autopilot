@@ -126,7 +126,7 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, f
 		return raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
 	}
 	else {
-		return (_current_orbit_angle + matrix::sign(orbit_angle_error) * max_orbital_step); // Take a step
+		return matrix::wrap_pi(_current_orbit_angle + matrix::sign(orbit_angle_error) * max_orbital_step); // Take a step
 	}
 }
 
@@ -187,6 +187,7 @@ bool FlightTaskAutoFollowTarget::update()
 
 		// Get the follow angle from the parameter
 		const float new_follow_angle_rad = math::radians(update_follow_me_angle_setting(_param_nav_ft_fs.get()));
+		_follow_angle_rad = new_follow_angle_rad; // Save the follow angle internally
 
 		// Update the new orbit angle (rate constrained)
 		_current_orbit_angle = update_orbit_angle(_target_orientation_rad, new_follow_angle_rad, max_orbit_rate);
@@ -198,9 +199,7 @@ bool FlightTaskAutoFollowTarget::update()
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
-				if(_dont_follow_target_velocity) {
-					_velocity_setpoint = target_velocity_filtered; // Else, follow target velocity directly
-				}
+				_velocity_setpoint = target_velocity_filtered; // Follow target velocity directly
 				_position_setpoint = drone_desired_position;
 
 			} else {
