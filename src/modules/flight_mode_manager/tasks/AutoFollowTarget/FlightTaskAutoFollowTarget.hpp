@@ -187,7 +187,8 @@ protected:
 		(ParamFloat<px4::params::NAV_FT_DST>) _param_nav_ft_dst,
 		(ParamInt<px4::params::NAV_FT_FS>) _param_nav_ft_fs,
 		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m,
-		(ParamInt<px4::params::NAV_FT_GMB_M>) _param_nav_ft_gmb_m
+		(ParamInt<px4::params::NAV_FT_GMB_M>) _param_nav_ft_gmb_m,
+		(ParamInt<px4::params::NAV_FT_YAW_FT>) _param_nav_ft_yaw_ft
 	)
 
 	uORB::Subscription _follow_target_estimator_sub{ORB_ID(follow_target_estimator)};
