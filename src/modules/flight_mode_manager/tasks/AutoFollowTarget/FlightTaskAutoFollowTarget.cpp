@@ -117,17 +117,24 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, f
 	// Raw target orbit (setpoint) angle
 	const float raw_target_orbit_angle = matrix::wrap_pi(target_orientation + follow_angle);
 
-	// Calculate orbit angle error
+	// Calculate orbit angle error & it's direction
 	const float orbit_angle_error = matrix::wrap_pi(raw_target_orbit_angle - _current_orbit_angle);
+	const float orbit_angle_error_sign = matrix::sign(orbit_angle_error);
 
 	// Calculate maximum orbital angle step we can take for this iteration
 	const float max_orbital_step = max_orbital_rate * _deltatime;
 
+	// Calculate unit vector pointed towrads the orbital step direction
+	const Vector2f orbital_step_unit_vector = Vector2f(-sin(_current_orbit_angle), cos(_current_orbit_angle)) * orbit_angle_error_sign;
+
 	if(fabsf(orbit_angle_error) < max_orbital_step) {
+		const float orbital_velocity_ratio = fabsf(orbit_angle_error) / max_orbital_step; // Current orbital step / Max orbital step, for velocity calculation
+		_orbit_tangential_velocity = orbital_step_unit_vector * max_orbital_rate * orbital_velocity_ratio;
 		return raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
 	}
 	else {
-		return matrix::wrap_pi(_current_orbit_angle + matrix::sign(orbit_angle_error) * max_orbital_step); // Take a step
+		_orbit_tangential_velocity = orbital_step_unit_vector * max_orbital_rate;
+		return matrix::wrap_pi(_current_orbit_angle + orbit_angle_error_sign * max_orbital_step); // Take a step
 	}
 }
 
@@ -143,7 +150,6 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 
 	// Calculate desired 2D position
 	drone_desired_position.xy() = Vector2f(target_position.xy()) + offset_vector;
-
 
 	// Z-position based off curent and initial target altitude
 	// TODO: Parameter NAV_MIN_FT_HT has been repurposed to be used as the desired
@@ -200,7 +206,8 @@ bool FlightTaskAutoFollowTarget::update()
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
-				_velocity_setpoint = target_velocity_filtered; // Follow target velocity directly
+				Vector3f orbit_tangential_velocity_3d = Vector3f(_orbit_tangential_velocity(0), _orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
+				_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
 				_position_setpoint = drone_desired_position;
 
 			} else {
@@ -301,6 +308,7 @@ bool FlightTaskAutoFollowTarget::update()
 	follow_target_status.current_orbit_angle = _current_orbit_angle;
 
 	follow_target_status.drone_to_target_heading = _drone_to_target_heading; // debug
+	_orbit_tangential_velocity.copyTo(follow_target_status.orbit_tangential_velocity); // debug
 
 	follow_target_status.emergency_ascent = _emergency_ascent;
 	follow_target_status.gimbal_pitch = _gimbal_pitch;
