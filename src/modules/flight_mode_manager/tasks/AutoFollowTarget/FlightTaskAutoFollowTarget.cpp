@@ -73,6 +73,9 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	_target_pose_filter.reset(Vector3f{NAN, NAN, NAN});
 	_target_pose_filter.setParameters(TARGET_POSE_FILTER_NATURAL_FREQUENCY, TARGET_POSE_FILTER_DAMPING_RATIO);
 
+	_yaw_setpoint_filter.reset(NAN);
+
+	// We don't command the yawspeed, since only the yaw can be calculated off of the target
 	_yawspeed_setpoint = 0.f;
 
 	return ret;
@@ -224,12 +227,24 @@ bool FlightTaskAutoFollowTarget::update()
 			_velocity_setpoint(2) = -EMERGENCY_ASCENT_SPEED; // Slowly ascend
 		}
 
-		// Yaw setpoint: Face the target
-		const Vector2f target_to_drone_xy = Vector2f(_position.xy()) - Vector2f(
-				target_position_filtered.xy());
+		// Yaw Setpoint : Calculate offset 2D vector to target
+		const Vector2f drone_to_target_xy  = Vector2f(target_position_filtered.xy()) - Vector2f(
+				_position.xy());
 
-		if (target_to_drone_xy.longerThan(MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL)) {
-			_yaw_setpoint = atan2f(-target_to_drone_xy(1), -target_to_drone_xy(0));
+		// Update Yaw setpoint if we're far enough for yaw control
+		if (drone_to_target_xy.longerThan(MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL)) {
+			float yaw_setpoint_raw = atan2f(drone_to_target_xy(1), drone_to_target_xy(0));
+			// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
+			// +M_PI, the filter can just average them out and give wrong output.
+			float yaw_setpoint_raw_unwrapped = matrix::unwrap(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
+
+			// Set the parameters for the filter to take update time interval into account
+			_yaw_setpoint_filter.setParameters(_deltatime, YAW_SETPOINT_FILTER_ALPHA);
+			_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
+
+			// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
+			_yaw_setpoint_filter.reset(matrix::wrap_pi(_yaw_setpoint_filter.getState()));
+			_yaw_setpoint = _yaw_setpoint_filter.getState();
 		}
 
 		// Gimbal setpoint
