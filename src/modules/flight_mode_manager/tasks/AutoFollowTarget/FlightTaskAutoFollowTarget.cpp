@@ -234,22 +234,31 @@ bool FlightTaskAutoFollowTarget::update()
 			float yaw_setpoint_raw = atan2f(drone_to_target_xy(1), drone_to_target_xy(0));
 			_drone_to_target_heading = yaw_setpoint_raw;
 
-			// If the filter hasn't been initialized yet, reset the state to raw heading value
-			if(!PX4_ISFINITE(_yaw_setpoint_filter.getState())) {
-				_yaw_setpoint_filter.reset(yaw_setpoint_raw);
+			// Check if yaw setpoint filtering is enabled
+			if (_param_nav_ft_yaw_ft.get()) {
+				// If the filter hasn't been initialized yet, reset the state to raw heading value
+				if (!PX4_ISFINITE(_yaw_setpoint_filter.getState())) {
+					_yaw_setpoint_filter.reset(yaw_setpoint_raw);
+				}
+
+				// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
+				// +M_PI, the filter can just average them out and give wrong output.
+				float yaw_setpoint_raw_unwrapped = matrix::unwrap(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
+
+				// Set the parameters for the filter to take update time interval into account
+				_yaw_setpoint_filter.setParameters(_deltatime, YAW_SETPOINT_FILTER_ALPHA);
+				_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
+
+				// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
+				_yaw_setpoint_filter.reset(matrix::wrap_pi(_yaw_setpoint_filter.getState()));
+				_yaw_setpoint = _yaw_setpoint_filter.getState();
+			}
+			else {
+				// Yaw setpoint filtering disabled, set raw yaw setpoint
+				_yaw_setpoint = yaw_setpoint_raw;
 			}
 
-			// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
-			// +M_PI, the filter can just average them out and give wrong output.
-			float yaw_setpoint_raw_unwrapped = matrix::unwrap(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
 
-			// Set the parameters for the filter to take update time interval into account
-			_yaw_setpoint_filter.setParameters(_deltatime, YAW_SETPOINT_FILTER_ALPHA);
-			_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
-
-			// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
-			_yaw_setpoint_filter.reset(matrix::wrap_pi(_yaw_setpoint_filter.getState()));
-			_yaw_setpoint = _yaw_setpoint_filter.getState();
 		}
 
 		// Gimbal setpoint
