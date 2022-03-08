@@ -269,7 +269,7 @@ bool FlightTaskAutoFollowTarget::update()
 			break;
 		}
 
-		point_gimbal_at(target_to_drone_xy.norm(), gimbal_height);
+		point_gimbal_at(drone_to_target_xy.norm(), gimbal_height);
 
 	} else {
 		// Control setpoint: Stay in current position
