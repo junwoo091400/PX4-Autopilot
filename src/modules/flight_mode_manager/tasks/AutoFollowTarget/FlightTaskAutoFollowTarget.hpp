@@ -78,7 +78,7 @@ static constexpr float TARGET_POSE_FILTER_DAMPING_RATIO = 0.7071;
 
 // [m/s] Velocity deadzone for which, under this velocity, the target orientation
 // tracking will freeze, since orientation can be noisy in low velocities
-static constexpr float TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING = 0.5;
+static constexpr float TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING = 1.0;
 
 // [m/s] Velocity limit to limit orbital angular rate depending on follow distance
 static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
