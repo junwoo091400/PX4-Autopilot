@@ -46,12 +46,15 @@
 
 #include <parameters/param.h>
 #include <mathlib/mathlib.h>
+
 #include <uORB/Subscription.hpp>
 #include <uORB/PublicationMulti.hpp>
 #include <uORB/topics/follow_target_status.h>
 #include <uORB/topics/follow_target_estimator.h>
 #include <uORB/topics/gimbal_manager_set_attitude.h>
+
 #include <lib/mathlib/math/filter/second_order_reference_model.hpp>
+#include <lib/mathlib/math/filter/AlphaFilter.hpp>
 #include <lib/matrix/matrix/helper_functions.hpp>
 
 // Minimum distance between drone and target for the drone to do any yaw control.
@@ -80,12 +83,12 @@ static constexpr float TARGET_POSE_FILTER_DAMPING_RATIO = 0.7071;
 // tracking will freeze, since orientation can be noisy in low velocities
 static constexpr float TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING = 0.5;
 
-// [m/s] Velocity threshold, where if target's speed is higher than this value,
-// target tracking will be fully active (with full orbit angular speed).
-static constexpr float TARGET_VELOCITY_THRESHOLD_FOR_ORIENTATION_TRACKING = 1.5;
-
 // [m/s] Velocity limit to limit orbital angular rate depending on follow distance
 static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
+
+// Yaw setpoint filter to avoid jitter-ness, which can happen because the yaw is
+// calculated off of position offset between target & drone, which updates very frequently.
+static constexpr float YAW_SETPOINT_FILTER_ALPHA = 1.5;
 
 
 class FlightTaskAutoFollowTarget : public FlightTask
@@ -175,6 +178,9 @@ protected:
 	// NOTE: If more of these internal state variables come into existence, it
 	// would make sense to create an internal state machine with a single enum
 	bool _emergency_ascent = false;
+
+	// Yaw setpoint filter to remove jitter-ness
+	AlphaFilter<float> _yaw_setpoint_filter;
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::NAV_MIN_FT_HT>) _param_nav_min_ft_ht,
