@@ -57,9 +57,6 @@
 #include <lib/mathlib/math/filter/AlphaFilter.hpp>
 #include <lib/matrix/matrix/helper_functions.hpp>
 
-// Minimum distance between drone and target for the drone to do any yaw control.
-static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
-
 // Minimum safety altitude above home (or bottom distance sensor)
 // underneath which the flight task will stop moving horizontally
 static constexpr float MINIMUM_SAFETY_ALTITUDE = 1.0f;
@@ -86,9 +83,12 @@ static constexpr float TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING = 0.5;
 // [m/s] Velocity limit to limit orbital angular rate depending on follow distance
 static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
 
+// [m] Minimum distance between drone and target for the drone to do any yaw control.
+static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
+
 // Yaw setpoint filter to avoid jitter-ness, which can happen because the yaw is
 // calculated off of position offset between target & drone, which updates very frequently.
-static constexpr float YAW_SETPOINT_FILTER_ALPHA = 1.5;
+static constexpr float YAW_SETPOINT_FILTER_ALPHA = 0.5;
 
 
 class FlightTaskAutoFollowTarget : public FlightTask
@@ -172,8 +172,8 @@ protected:
 	// Current orbit angle measured in global frame, against the target
 	float _current_orbit_angle{0.0f};
 
-	// If target speed is too low (below deadzone), don't set velocity setpoints since it's estimate can be noisy
-	bool _dont_follow_target_velocity{true};
+	// Unfiltered drone to target heading
+	float _drone_to_target_heading{0.0f};
 
 	// NOTE: If more of these internal state variables come into existence, it
 	// would make sense to create an internal state machine with a single enum

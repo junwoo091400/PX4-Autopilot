@@ -106,11 +106,9 @@ float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velo
 	// Depending on the target velocity, freeze or set new target orientatino value
 	if(target_velocity_norm >= TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING) {
 		_target_orientation_rad = atan2f(target_velocity(1), target_velocity(0));
-		_dont_follow_target_velocity = false;
 	}
 	else {
 		_target_orientation_rad = _target_orientation_rad;
-		_dont_follow_target_velocity = true;
 	}
 	return _target_orientation_rad;
 }
@@ -234,6 +232,13 @@ bool FlightTaskAutoFollowTarget::update()
 		// Update Yaw setpoint if we're far enough for yaw control
 		if (drone_to_target_xy.longerThan(MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL)) {
 			float yaw_setpoint_raw = atan2f(drone_to_target_xy(1), drone_to_target_xy(0));
+			_drone_to_target_heading = yaw_setpoint_raw;
+
+			// If the filter hasn't been initialized yet, reset the state to raw heading value
+			if(!PX4_ISFINITE(_yaw_setpoint_filter.getState())) {
+				_yaw_setpoint_filter.reset(yaw_setpoint_raw);
+			}
+
 			// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
 			// +M_PI, the filter can just average them out and give wrong output.
 			float yaw_setpoint_raw_unwrapped = matrix::unwrap(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
@@ -285,6 +290,8 @@ bool FlightTaskAutoFollowTarget::update()
 	follow_target_status.tracked_target_orientation = _target_orientation_rad;
 	follow_target_status.follow_angle = _follow_angle_rad;
 	follow_target_status.current_orbit_angle = _current_orbit_angle;
+
+	follow_target_status.drone_to_target_heading = _drone_to_target_heading; // debug
 
 	follow_target_status.emergency_ascent = _emergency_ascent;
 	follow_target_status.gimbal_pitch = _gimbal_pitch;
