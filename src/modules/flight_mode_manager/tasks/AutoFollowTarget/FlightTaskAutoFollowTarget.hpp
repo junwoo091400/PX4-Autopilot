@@ -172,6 +172,9 @@ protected:
 	// Current orbit angle measured in global frame, against the target
 	float _current_orbit_angle{0.0f};
 
+	// Tracked orbit tangential speed, to compensate for the orbital motion for velocity setpoints
+	Vector2f _orbit_tangential_velocity{0.0f, 0.0f};
+
 	// Unfiltered drone to target heading
 	float _drone_to_target_heading{0.0f};
 
