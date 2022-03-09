@@ -233,8 +233,7 @@ bool FlightTaskAutoFollowTarget::update()
 		}
 
 		// Yaw Setpoint : Calculate offset 2D vector to target
-		const Vector2f drone_to_target_xy  = Vector2f(target_position_filtered.xy()) - Vector2f(
-				_position.xy());
+		const Vector2f drone_to_target_xy  = Vector2f(target_position_filtered.xy()) - Vector2f(_position.xy());
 
 		// Update Yaw setpoint if we're far enough for yaw control
 		if (drone_to_target_xy.longerThan(MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL)) {
