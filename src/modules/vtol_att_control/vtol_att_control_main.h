@@ -126,6 +126,8 @@ public:
 	bool get_immediate_transition() {return _immediate_transition;}
 	void reset_immediate_transition() {_immediate_transition = false;}
 
+	float getAirDensity() const { return _air_density; }
+
 	struct actuator_controls_s 			*get_actuators_fw_in() {return &_actuators_fw_in;}
 	struct actuator_controls_s 			*get_actuators_mc_in() {return &_actuators_mc_in;}
 	struct actuator_controls_s 			*get_actuators_out0() {return &_actuators_out_0;}
@@ -133,7 +135,6 @@ public:
 	struct airspeed_validated_s 			*get_airspeed() {return &_airspeed_validated;}
 	struct position_setpoint_triplet_s		*get_pos_sp_triplet() {return &_pos_sp_triplet;}
 	struct tecs_status_s 				*get_tecs_status() {return &_tecs_status;}
-	struct vehicle_air_data_s 			*get_vehicle_air_data() {return &_vehicle_air_data;}
 	struct vehicle_attitude_s 			*get_att() {return &_v_att;}
 	struct vehicle_attitude_setpoint_s		*get_att_sp() {return &_v_att_sp;}
 	struct vehicle_attitude_setpoint_s 		*get_fw_virtual_att_sp() {return &_fw_virtual_att_sp;}
@@ -202,13 +203,14 @@ private:
 	airspeed_validated_s 				_airspeed_validated{};			// airspeed
 	position_setpoint_triplet_s		_pos_sp_triplet{};
 	tecs_status_s				_tecs_status{};
-	vehicle_air_data_s 			_vehicle_air_data{};
 	vehicle_attitude_s			_v_att{};				//vehicle attitude
 	vehicle_control_mode_s			_v_control_mode{};	//vehicle control mode
 	vehicle_land_detected_s			_land_detected{};
 	vehicle_local_position_s		_local_pos{};
 	vehicle_local_position_setpoint_s	_local_pos_sp{};
 	vtol_vehicle_status_s 			_vtol_vehicle_status{};
+
+	float _air_density{CONSTANTS_AIR_DENSITY_SEA_LEVEL_15C};	// [kg/m^3]
 
 	Params _params{};	// struct holding the parameters
 

@@ -204,13 +204,13 @@ void Tiltrotor::update_vtol_state()
 
 				bool transition_to_p2 = false;
 
-				if (time_since_trans_start > _params->front_trans_time_min) {
+				if (time_since_trans_start > getMinimumFrontTransitionTime()) {
 					if (airspeed_triggers_transition) {
 						transition_to_p2 = _airspeed_validated->calibrated_airspeed_m_s >= _params->transition_airspeed;
 
 					} else {
 						transition_to_p2 = _tilt_control >= _params_tiltrotor.tilt_transition &&
-								   time_since_trans_start > _params->front_trans_time_openloop;;
+								   time_since_trans_start > getOpenLoopFrontTransitionTime();
 					}
 				}
 
@@ -396,9 +396,9 @@ void Tiltrotor::update_transition_state()
 
 		// without airspeed do timed weight changes
 		if ((_params->airspeed_disabled || !PX4_ISFINITE(_airspeed_validated->calibrated_airspeed_m_s)) &&
-		    time_since_trans_start > _params->front_trans_time_min) {
-			_mc_roll_weight = 1.0f - (time_since_trans_start - _params->front_trans_time_min) /
-					  (_params->front_trans_time_openloop - _params->front_trans_time_min);
+		    time_since_trans_start > getMinimumFrontTransitionTime()) {
+			_mc_roll_weight = 1.0f - (time_since_trans_start - getMinimumFrontTransitionTime()) /
+					  (getOpenLoopFrontTransitionTime() - getMinimumFrontTransitionTime());
 			_mc_yaw_weight = _mc_roll_weight;
 		}
 
@@ -668,8 +668,8 @@ float Tiltrotor::alternate_motors_elevator_trim(const float throttle_alternate)
 		airspeed = _airspeed_validated->calibrated_airspeed_m_s;
 	}
 
-	if (PX4_ISFINITE(_vehicle_air_data->rho)) {
-		rho = _vehicle_air_data->rho;
+	if (PX4_ISFINITE(_attc->getAirDensity())) {
+		rho = _attc->getAirDensity();
 	}
 
 	const float dynamic_pressure = math::constrain(0.5f * airspeed * airspeed * rho, 120.0f, 250.0f);

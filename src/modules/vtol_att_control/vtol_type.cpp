@@ -75,7 +75,6 @@ VtolType::VtolType(VtolAttitudeControl *att_controller) :
 	_tecs_status = _attc->get_tecs_status();
 	_land_detected = _attc->get_land_detected();
 	_params = _attc->get_params();
-	_vehicle_air_data = _attc->get_vehicle_air_data();
 
 	for (auto &pwm_max : _max_mc_pwm_values.values) {
 		pwm_max = PWM_DEFAULT_MAX;
@@ -819,4 +818,33 @@ void VtolType::activate_actuator_test_mode(actuator_test_type test_type)
 	_control_surfaces_test_state = control_surfaces_test_state::STATE_TEST_AILERON;
 	_actuator_test_position_state = actuator_test_position_state::STATE_POSITION_WAIT;
 	_timestamp_new_state = hrt_absolute_time();
+}
+
+float VtolType::getFrontTransitionTimeFactor() const
+{
+	// assumptions: transition_time = transition_true_airspeed / average_acceleration (thrust)
+	// transition_true_airspeed ~ sqrt(rho0 / rh0)
+	// average_acceleration ~ rho / rho0
+	// transition_time ~ sqrt(rho0/rh0) * rho0 / rho
+
+	// low value: hot day at 4000m AMSL with some margin
+	// high value: cold day at 0m AMSL with some margin
+	const float rho = math::constrain(_attc->getAirDensity(), 0.7f, 1.5f);
+
+	if (PX4_ISFINITE(rho)) {
+		float rho0_over_rho = CONSTANTS_AIR_DENSITY_SEA_LEVEL_15C / rho;
+		return sqrtf(rho0_over_rho) * rho0_over_rho;
+	}
+
+	return 1.0f;
+}
+
+float VtolType::getMinimumFrontTransitionTime() const
+{
+	return getFrontTransitionTimeFactor() * _params->front_trans_time_min;
+}
+
+float VtolType::getOpenLoopFrontTransitionTime() const
+{
+	return getFrontTransitionTimeFactor() * _params->front_trans_time_openloop;
 }
