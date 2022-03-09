@@ -646,7 +646,9 @@ Mission::update_mission()
 		PX4_ERR("mission update failed");
 	}
 
-	if (failed) {
+	if (failed && (_navigator->get_vstatus()->arming_state == vehicle_status_s::ARMING_STATE_ARMED)) {
+		// if in-air and the mission upload fails, restore the old mission
+
 		// only warn if the check failed on merit
 		if ((int)_mission.count > 0) {
 			PX4_WARN("mission check failed");
