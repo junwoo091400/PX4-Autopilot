@@ -69,8 +69,8 @@ static constexpr float ALT_ACCEPTANCE_THRESHOLD = 3.0f;
 // is too close to the ground (below MINIMUM_SAFETY_ALTITUDE)
 static constexpr float EMERGENCY_ASCENT_SPEED = 0.2f;
 
-// [s] If the target estimator output isn't updated longer than this, reset pose filter.
-static constexpr float TARGET_ESTIMATOR_TIMEOUT_SECONDS = 1.5;
+// [us] If the target estimator output isn't updated longer than this, reset pose filter.
+static constexpr float TARGET_ESTIMATOR_TIMEOUT_US = 1500000UL;
 
 // Second order filter parameter for target position filter
 static constexpr float TARGET_POSE_FILTER_NATURAL_FREQUENCY = 1.0f; // [rad/s]
@@ -158,7 +158,7 @@ protected:
 	follow_target_estimator_s _follow_target_estimator;
 
 	// Last target estimator timestamp to handle timeout filter reset
-	uint16_t _last_target_estimator_timestamp{0};
+	uint64_t _last_valid_target_estimator_timestamp{0};
 
 	// Second Order Filter to calculate kinematically feasible target position
 	SecondOrderReferenceModel<matrix::Vector3f> _target_pose_filter;

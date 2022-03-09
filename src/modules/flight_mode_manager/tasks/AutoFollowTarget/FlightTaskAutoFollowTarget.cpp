@@ -81,22 +81,31 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	return ret;
 }
 
+// Update the target pose filter, knowing that target estimator data is valid (checked in the update() main function).
 void FlightTaskAutoFollowTarget::update_target_pose_filter(follow_target_estimator_s follow_target_estimator) {
-	bool target_estimator_timeout = (follow_target_estimator.timestamp - _last_target_estimator_timestamp) > TARGET_ESTIMATOR_TIMEOUT_SECONDS;
-
 	const Vector3f pos_ned_est{follow_target_estimator.pos_est};
 	const Vector3f vel_ned_est{follow_target_estimator.vel_est};
 
-	// Reset the Target pose filter if it's state is not finite or estimator has timed out
-	if (target_estimator_timeout || !PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
-	|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
-		!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
-		_target_pose_filter.reset(pos_ned_est, vel_ned_est);
-		_last_target_estimator_timestamp = follow_target_estimator.timestamp; // Reset last estimator received timestamp
-	}
+	// Check Follow target estimator's validity & timeout conditions
+	bool target_estimator_timeout = ((follow_target_estimator.timestamp - _last_valid_target_estimator_timestamp) > TARGET_ESTIMATOR_TIMEOUT_US);
 
-	// Second order target position filter to calculate kinematically feasible target position
-	_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+	// Reset last valid estimator data received timestamp
+	_last_valid_target_estimator_timestamp = follow_target_estimator.timestamp;
+
+	// Handle Timetout cases
+	if(target_estimator_timeout) {
+		printf("Target Estimator timeout! %d\n", follow_target_estimator.timestamp);
+		// Reset the Target pose filter if it's state is not finite
+		if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
+		|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
+			!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
+			_target_pose_filter.reset(pos_ned_est, vel_ned_est);
+		}
+	}
+	else {
+		// Second order target position filter to calculate kinematically feasible target position
+		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
+	}
 }
 
 float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velocity) {
@@ -180,7 +189,7 @@ bool FlightTaskAutoFollowTarget::update()
 	follow_target_status_s follow_target_status{}; // Debugging uORB message for follow target status
 
 	if (_follow_target_estimator.timestamp > 0 && _follow_target_estimator.valid) {
-		// Update second order target pose filter
+		// Update second order target pose filter, with a valid data
 		update_target_pose_filter(_follow_target_estimator);
 
 		const Vector3f target_position_filtered = _target_pose_filter.getState();
