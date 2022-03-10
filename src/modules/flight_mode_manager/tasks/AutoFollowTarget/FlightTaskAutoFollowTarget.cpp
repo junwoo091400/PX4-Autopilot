@@ -94,7 +94,6 @@ void FlightTaskAutoFollowTarget::update_target_pose_filter(follow_target_estimat
 
 	// Handle Timetout cases
 	if(target_estimator_timeout) {
-		printf("Target Estimator timeout! %d\n", follow_target_estimator.timestamp);
 		// Reset the Target pose filter if it's state is not finite
 		if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
 		|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
