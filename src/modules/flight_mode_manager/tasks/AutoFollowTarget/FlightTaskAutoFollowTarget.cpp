@@ -71,7 +71,7 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	}
 
 	_target_pose_filter.reset(Vector3f{NAN, NAN, NAN});
-	_target_pose_filter.setParameters(TARGET_POSE_FILTER_NATURAL_FREQUENCY, TARGET_POSE_FILTER_DAMPING_RATIO);
+	_target_pose_filter.setParameters(_param_nav_ft_filter_r.get(), TARGET_POSE_FILTER_DAMPING_RATIO);
 
 	_yaw_setpoint_filter.reset(NAN);
 

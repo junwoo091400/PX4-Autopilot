@@ -130,4 +130,14 @@ PARAM_DEFINE_INT32(NAV_FT_GMB_M, 0);
  * @boolean
  * @group Follow target
  */
-PARAM_DEFINE_INT32(NAV_FT_YAW_FT, 1);
+PARAM_DEFINE_INT32(NAV_FT_YAW_FT, 0);
+
+/**
+ * Target Pose filter's natural angular rate setting [rad/s]
+ *
+ * @unit rad/s
+ * @min 0.1
+ * @decimal 1
+ * @group Follow target
+ */
+PARAM_DEFINE_FLOAT(NAV_FT_FILT_R, 1.0f);
