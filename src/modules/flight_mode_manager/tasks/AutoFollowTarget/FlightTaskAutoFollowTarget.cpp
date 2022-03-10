@@ -92,7 +92,7 @@ void FlightTaskAutoFollowTarget::update_stick_command() {
 
 	// Processs only when valid stick input is available
 	if(_sticks.isAvailable()) {
-
+		float throttle =
 	}
 }
 
@@ -280,7 +280,7 @@ bool FlightTaskAutoFollowTarget::update()
 
 				// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
 				// +M_PI, the filter can just average them out and give wrong output.
-				float yaw_setpoint_raw_unwrapped = matrix::unwrap(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
+				float yaw_setpoint_raw_unwrapped = matrix::unwrap_pi(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
 
 				// Set the parameters for the filter to take update time interval into account
 				_yaw_setpoint_filter.setParameters(_deltatime, YAW_SETPOINT_FILTER_ALPHA);
