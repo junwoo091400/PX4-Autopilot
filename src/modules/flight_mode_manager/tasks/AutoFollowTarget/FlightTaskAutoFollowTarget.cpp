@@ -49,7 +49,7 @@ using matrix::Vector3f;
 using matrix::Quatf;
 using matrix::Eulerf;
 
-FlightTaskAutoFollowTarget::FlightTaskAutoFollowTarget()
+FlightTaskAutoFollowTarget::FlightTaskAutoFollowTarget() : _sticks(this)
 {
 	_target_estimator.Start();
 }
@@ -84,6 +84,16 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	}
 
 	return ret;
+}
+
+void FlightTaskAutoFollowTarget::update_stick_command() {
+	// Update the sticks object to fetch recent data
+	_sticks.checkAndSetStickInputs();
+
+	// Processs only when valid stick input is available
+	if(_sticks.isAvailable()) {
+
+	}
 }
 
 // Update the target pose filter, knowing that target estimator data is valid (checked in the update() main function).

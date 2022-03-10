@@ -43,6 +43,7 @@
 
 #include "FlightTaskAuto.hpp"
 #include "follow_target_estimator/TargetEstimator.hpp"
+#include "Sticks.hpp"
 
 #include <parameters/param.h>
 #include <mathlib/mathlib.h>
@@ -139,9 +140,14 @@ protected:
 		FOLLOW_GIMBAL_MODE_3D
 	};
 
+	void FlightTaskAutoFollowTarget::update_stick_command();
+
 	void update_target_pose_filter(follow_target_estimator_s follow_target_estimator);
+
 	float update_target_orientation(Vector2f target_velocity);
+
 	float update_orbit_angle(float target_orientation, float fllow_angle, float max_orbital_rate);
+
 	Vector3f calculate_drone_desired_position(Vector3f target_position);
 
 	void point_gimbal_at(float xy_distance, float z_distance);
@@ -153,6 +159,9 @@ protected:
 	 * @return Angle [deg] from which the drone should view the target while following it, with zero degrees indicating the target's 12 o'clock
 	 */
 	float update_follow_me_angle_setting(int param_nav_ft_fs) const;
+
+	// Sticks object to read in stick commands from the user
+	Sticks _sticks;
 
 	// Estimator for target position and velocity
 	TargetEstimator _target_estimator;
