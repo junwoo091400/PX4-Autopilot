@@ -592,7 +592,6 @@ Mission::update_mission()
 			_mission.current_seq = 0;
 			_current_mission_index = 0;
 			_mission.valid = false;
-			reset_command_cache();
 
 		} else {
 
@@ -604,12 +603,10 @@ Mission::update_mission()
 				/* if less items available, reset to first item */
 				if (_current_mission_index >= (int)_mission.count) {
 					_current_mission_index = 0;
-					reset_command_cache();
 
 				} else if (_current_mission_index < 0) {
 					/* if not initialized, set it to 0 */
 					_current_mission_index = 0;
-					reset_command_cache();
 				}
 
 				/* otherwise, just leave it */
@@ -662,12 +659,15 @@ Mission::update_mission()
 			_mission.count = 0;
 			_mission.current_seq = 0;
 			_current_mission_index = 0;
-			reset_command_cache();
 
 		} else {
 			mavlink_log_critical(_navigator->get_mavlink_log_pub(), "Mission rejected: previous mission is uploaded.");
 			events::send(events::ID("mission_restore_old"), events::Log::Error, "Mission rejected: previous mission is uploaded");
 		}
+	}
+
+	if (_current_mission_index == 0) {
+		reset_command_cache();
 	}
 
 	// find and store landing start marker (if available)
@@ -706,7 +706,6 @@ Mission::restore_old_mission()
 		/* For completed old mission reset sequence to the first item. */
 		if (_old_mission.current_seq >= _old_mission.count) {
 			_current_mission_index = 0;
-			reset_command_cache();
 
 		} else {
 			_current_mission_index = _old_mission.current_seq;
