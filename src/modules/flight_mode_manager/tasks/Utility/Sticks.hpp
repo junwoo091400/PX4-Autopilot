@@ -53,8 +53,12 @@ public:
 	Sticks(ModuleParams *parent);
 	~Sticks() = default;
 
-	bool checkAndSetStickInputs();
+	// Checks for updated manual control input & updates internal values
+	bool checkAndUpdateStickInputs();
+
 	bool isAvailable() { return _input_available; };
+
+	// Position : 0 : pitch, 1 : roll, 2 : throttle, 3 : yaw
 	const matrix::Vector<float, 4> &getPosition() { return _positions; };
 	const matrix::Vector<float, 4> &getPositionExpo() { return _positions_expo; };
 
