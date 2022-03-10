@@ -129,6 +129,7 @@ protected:
 
 	enum {
 		FOLLOW_ALTITUDE_MODE_CONSTANT,
+		FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN,
 		FOLLOW_ALTITUDE_MODE_TRACK_TARGET
 	};
 
@@ -185,8 +186,11 @@ protected:
 	// Yaw setpoint filter to remove jitter-ness
 	AlphaFilter<float> _yaw_setpoint_filter;
 
+	// Variable to remember the home position's z coordinate, which will be baseline for the position z setpoint
+	float _home_position_z{0.0f};
+
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::NAV_MIN_FT_HT>) _param_nav_min_ft_ht,
+		(ParamFloat<px4::params::NAV_FT_MIN_HT>) _param_nav_ft_min_ht,
 		(ParamFloat<px4::params::NAV_FT_DST>) _param_nav_ft_dst,
 		(ParamInt<px4::params::NAV_FT_FS>) _param_nav_ft_fs,
 		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m,

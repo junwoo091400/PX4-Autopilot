@@ -52,7 +52,7 @@
  * @min 8.0
  * @group Follow target
  */
-PARAM_DEFINE_FLOAT(NAV_MIN_FT_HT, 8.0f);
+PARAM_DEFINE_FLOAT(NAV_FT_MIN_HT, 8.0f);
 
 /**
  * Distance to follow target from
@@ -107,10 +107,9 @@ PARAM_DEFINE_FLOAT(NAV_FT_RS, 0.1f);
  * the target's altitude, the follow altitude NAV_MIN_FT_HT should be high enough
  * to prevent terrain collisions due to GPS inaccuracies of the target.
  *
- * TODO: Add option for 2D tracking + terrain following
- *
- * @value 0 Maintain constant altitude and track XY position only (2D tracking)
- * @value 1 Track target's altitude (3D tracking)
+ * @value 0 2D Tracking : Maintain constant altitude relative to home and track XY position only
+ * @value 1 2D + Terrain : Mantain constant altitude relative to terrain below and track XY position
+ * @value 2 3D Tracking : Track target's altitude (be aware that GPS altitude bias usually makes this useless)
  * @group Follow target
  */
 PARAM_DEFINE_INT32(NAV_FT_ALT_M, 0);

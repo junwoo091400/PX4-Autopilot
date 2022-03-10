@@ -78,6 +78,11 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	// We don't command the yawspeed, since only the yaw can be calculated off of the target
 	_yawspeed_setpoint = 0.f;
 
+	// Save the home position z value, to allow user so that altitude setpoint will be relative to arming position (home) altitude
+	if (_sub_home_position.get().valid_alt) {
+		_home_position_z = _sub_home_position.get().z;
+	}
+
 	return ret;
 }
 
@@ -159,12 +164,21 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	// Calculate desired 2D position
 	drone_desired_position.xy() = Vector2f(target_position.xy()) + offset_vector;
 
+	// Calculate ground's z value in local frame for terrain tracking mode.
+	// _dist_to_ground value takes care of distance sensor value if available, otherwise
+	// it uses home z value as reference
+	float ground_z_estimate = _position(2) + _dist_to_ground;
+
 	// Z-position based off curent and initial target altitude
 	// TODO: Parameter NAV_MIN_FT_HT has been repurposed to be used as the desired
 	// altitude above the target. Clarify best solution.
 	switch (_param_nav_ft_alt_m.get()) {
+	case FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN:
+		drone_desired_position(2) = ground_z_estimate - _param_nav_ft_min_ht.get();
+		break;
+
 	case FOLLOW_ALTITUDE_MODE_TRACK_TARGET:
-		drone_desired_position(2) = target_position(2) - _param_nav_min_ft_ht.get();
+		drone_desired_position(2) = target_position(2) - _param_nav_ft_min_ht.get();
 		break;
 
 	case FOLLOW_ALTITUDE_MODE_CONSTANT:
@@ -172,9 +186,8 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	// FALLTHROUGH
 
 	default:
-		// use the current position setpoint, unless it's closer to the ground than the minimum
-		// altitude setting
-		drone_desired_position(2) = math::min(_position_setpoint(2), -_param_nav_min_ft_ht.get());
+		// Calculate the desired Z position relative to the home position
+		drone_desired_position(2) = _home_position_z - _param_nav_ft_min_ht.get();
 	}
 
 	return drone_desired_position;
@@ -280,17 +293,17 @@ bool FlightTaskAutoFollowTarget::update()
 
 		switch (_param_nav_ft_gmb_m.get()) {
 		case FOLLOW_GIMBAL_MODE_2D:
-			gimbal_height = -_position(2);
-			break;
-
-		case FOLLOW_GIMBAL_MODE_3D:
-			// Point the gimbal at the target's 3D coordinates
-			gimbal_height = -(_position(2) - (target_position_filtered(2)));
+			gimbal_height = _home_position_z -_position(2); // Assume target is at home position's altitude
 			break;
 
 		case FOLLOW_GIMBAL_MODE_2D_WITH_TERRAIN:
 			// Point the gimbal at the ground level in this tracking mode
 			gimbal_height = _dist_to_ground;
+			break;
+
+		case FOLLOW_GIMBAL_MODE_3D:
+			// Point the gimbal at the target's 3D coordinates
+			gimbal_height = -(_position(2) - (target_position_filtered(2)));
 			break;
 
 		default:
