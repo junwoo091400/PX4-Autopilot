@@ -69,15 +69,16 @@ PARAM_DEFINE_FLOAT(NAV_FT_DST, 8.0f);
  * Side to follow target from
  *
  * The side to follow the target from
- * none         = 0
- * behind       = 1
- * front        = 2
- * front right  = 3
- * front left   = 4
- * mid right    = 5
- * mid left     = 6
- * behind right = 7
- * behind left  = 8
+ *
+ * @value 0 None (default, Behind)
+ * @value 1 Behind
+ * @value 2 front
+ * @value 3 front right
+ * @value 4 front left
+ * @value 5 mid right
+ * @value 6 mid left
+ * @value 7 behind right
+ * @value 8 behind left
  *
  * @min 0
  * @max 8
@@ -86,7 +87,7 @@ PARAM_DEFINE_FLOAT(NAV_FT_DST, 8.0f);
 PARAM_DEFINE_INT32(NAV_FT_FS, 1);
 
 /**
- * Dynamic filtering algorithm responsiveness to target movement
+ * Dynamic filtering algorithm responsiveness to target movement in Target Estimator
  *
  * lower values increase the responsiveness to changing long lat
  * but also ignore less noise
@@ -134,6 +135,8 @@ PARAM_DEFINE_INT32(NAV_FT_YAW_FT, 0);
 
 /**
  * Target Pose filter's natural angular rate setting [rad/s]
+ *
+ * The output of the Target estimator will be filtered via 2nd order filter with this natural angular rate
  *
  * @unit rad/s
  * @min 0.1
