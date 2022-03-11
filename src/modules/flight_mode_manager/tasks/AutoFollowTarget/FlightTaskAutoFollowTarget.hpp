@@ -91,6 +91,15 @@ static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
 // calculated off of position offset between target & drone, which updates very frequently.
 static constexpr float YAW_SETPOINT_FILTER_ALPHA = 0.5;
 
+// [m/s] Speed to which follow distance will be adjusted by, when commanded in full deflection via RC command
+static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 1.5;
+
+// [m/s] Speed to which follow height will be adjusted by, when commanded in full deflection via RC command
+static constexpr float FOLLOW_HEIGHT_USER_ADJUST_SPEED = 1.0;
+
+// [rad/s] Angular to which follow distance will be adjusted by, when commanded in full deflection via RC command
+static constexpr float FOLLOW_ANGLE_USER_ADJUST_SPEED = 1.5;
+
 
 class FlightTaskAutoFollowTarget : public FlightTask
 {
@@ -140,7 +149,7 @@ protected:
 		FOLLOW_GIMBAL_MODE_3D
 	};
 
-	void FlightTaskAutoFollowTarget::update_stick_command();
+	void update_stick_command();
 
 	void update_target_pose_filter(follow_target_estimator_s follow_target_estimator);
 
@@ -176,8 +185,10 @@ protected:
 	// Estimated (Filtered) target orientation setpoint
 	float _target_orientation_rad{0.0f};
 
-	// Follow angle is defined with 0 degrees following from front, and then clockwise rotation
-	float _follow_angle_rad{0.0f};
+	// Internally tracked Follow Target characteristics, to allow RC control input adjustments
+	float _follow_target_distance{0.0f};
+	float _follow_target_height{0.0f};
+	float _follow_angle_rad{0.0f}; // 0 degrees following from front, and then clockwise rotation
 
 	// Current orbit angle measured in global frame, against the target
 	float _current_orbit_angle{0.0f};
@@ -199,7 +210,7 @@ protected:
 	float _home_position_z{0.0f};
 
 	DEFINE_PARAMETERS(
-		(ParamFloat<px4::params::NAV_FT_MIN_HT>) _param_nav_ft_min_ht,
+		(ParamFloat<px4::params::NAV_FT_HT>) _param_nav_ft_ht,
 		(ParamFloat<px4::params::NAV_FT_DST>) _param_nav_ft_dst,
 		(ParamInt<px4::params::NAV_FT_FS>) _param_nav_ft_fs,
 		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m,

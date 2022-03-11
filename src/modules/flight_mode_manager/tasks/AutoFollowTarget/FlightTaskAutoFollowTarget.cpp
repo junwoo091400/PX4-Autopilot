@@ -63,8 +63,6 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 {
 	bool ret = FlightTask::activate(last_setpoint);
 
-	_position_setpoint = _position;
-
 	if (!PX4_ISFINITE(_position_setpoint(0)) || !PX4_ISFINITE(_position_setpoint(1))
 	    || !PX4_ISFINITE(_position_setpoint(2))) {
 		_position_setpoint = _position;
@@ -73,10 +71,14 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	_target_pose_filter.reset(Vector3f{NAN, NAN, NAN});
 	_target_pose_filter.setParameters(_param_nav_ft_filter_r.get(), TARGET_POSE_FILTER_DAMPING_RATIO);
 
-	_yaw_setpoint_filter.reset(NAN);
-
 	// We don't command the yawspeed, since only the yaw can be calculated off of the target
 	_yawspeed_setpoint = 0.f;
+	_yaw_setpoint_filter.reset(NAN);
+
+	// Update the internally tracaked Follow Target characteristics
+	_follow_angle_rad = math::radians(update_follow_me_angle_setting(_param_nav_ft_fs.get()));
+	_follow_target_distance = _param_nav_ft_dst.get();
+	_follow_target_height = _param_nav_ft_ht.get();
 
 	// Save the home position z value, to allow user so that altitude setpoint will be relative to arming position (home) altitude
 	if (_sub_home_position.get().valid_alt) {
@@ -86,14 +88,30 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	return ret;
 }
 
+// Updates Follow Target Height, Distance and Follow Angle depending on RC input commands
 void FlightTaskAutoFollowTarget::update_stick_command() {
 	// Update the sticks object to fetch recent data
-	_sticks.checkAndSetStickInputs();
+	_sticks.checkAndUpdateStickInputs();
 
-	// Processs only when valid stick input is available
-	if(_sticks.isAvailable()) {
-		float throttle =
+	// If no valid stick input is available, don't process any command
+	if(!_sticks.isAvailable()) {
+		return;
 	}
+
+	// Throttle for changing follow height
+	float height_change_speed = FOLLOW_HEIGHT_USER_ADJUST_SPEED * _sticks.getThrottle();
+	float new_height = _follow_target_height + height_change_speed * _deltatime;
+	_follow_target_height = constrain(new_height, MINIMUM_SAFETY_ALTITUDE, 100.f);
+
+	// Yaw for changing follow angle. When user commands +Yaw (right), angle increases (clockwise)
+	float angle_change_speed = FOLLOW_ANGLE_USER_ADJUST_SPEED * _sticks.getYaw();
+	float new_angle = _follow_angle_rad + angle_change_speed * _deltatime;
+	_follow_angle_rad = matrix::wrap_pi(new_angle);
+
+	// Pitch for changing distance
+	float distance_change_speed = FOLLOW_DISTANCE_USER_ADJUST_SPEED * _sticks.getPitch();
+	float new_distance = _follow_target_distance + distance_change_speed * _deltatime;
+	_follow_target_distance = constrain(new_distance, MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL, 50.f);
 }
 
 // Update the target pose filter, knowing that target estimator data is valid (checked in the update() main function).
@@ -166,7 +184,7 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	Vector3f drone_desired_position{NAN, NAN, NAN};
 
 	// Correct the desired distance by the target scale determined from object detection
-	const float desired_distance_to_target = _param_nav_ft_dst.get();
+	const float desired_distance_to_target = _follow_target_distance;
 
 	// Offset from the Target
 	Vector2f offset_vector = Vector2f(cos(_current_orbit_angle), sin(_current_orbit_angle)) * desired_distance_to_target;
@@ -184,11 +202,11 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	// altitude above the target. Clarify best solution.
 	switch (_param_nav_ft_alt_m.get()) {
 	case FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN:
-		drone_desired_position(2) = ground_z_estimate - _param_nav_ft_min_ht.get();
+		drone_desired_position(2) = ground_z_estimate - _follow_target_height;
 		break;
 
 	case FOLLOW_ALTITUDE_MODE_TRACK_TARGET:
-		drone_desired_position(2) = target_position(2) - _param_nav_ft_min_ht.get();
+		drone_desired_position(2) = target_position(2) - _follow_target_height;
 		break;
 
 	case FOLLOW_ALTITUDE_MODE_CONSTANT:
@@ -197,7 +215,7 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 
 	default:
 		// Calculate the desired Z position relative to the home position
-		drone_desired_position(2) = _home_position_z - _param_nav_ft_min_ht.get();
+		drone_desired_position(2) = _home_position_z - _follow_target_height;
 	}
 
 	return drone_desired_position;
@@ -217,18 +235,17 @@ bool FlightTaskAutoFollowTarget::update()
 		const Vector3f target_position_filtered = _target_pose_filter.getState();
 		const Vector3f target_velocity_filtered = _target_pose_filter.getRate();
 
+		// Update follow distance, angle and height via RC commands
+		update_stick_command();
+
 		// Calculate maximum orbital angular rate, depending on the follow distance
-		const float max_orbit_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _param_nav_ft_dst.get();
+		const float max_orbit_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance;
 
 		// Calculate target orientation to track [rad]
 		_target_orientation_rad = update_target_orientation(target_velocity_filtered.xy());
 
-		// Get the follow angle from the parameter
-		const float new_follow_angle_rad = math::radians(update_follow_me_angle_setting(_param_nav_ft_fs.get()));
-		_follow_angle_rad = new_follow_angle_rad; // Save the follow angle internally
-
 		// Update the new orbit angle (rate constrained)
-		_current_orbit_angle = update_orbit_angle(_target_orientation_rad, new_follow_angle_rad, max_orbit_rate);
+		_current_orbit_angle = update_orbit_angle(_target_orientation_rad, _follow_angle_rad, max_orbit_rate);
 
 		// Calculate desired position by applying orbit angle around the target
 		Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered);
