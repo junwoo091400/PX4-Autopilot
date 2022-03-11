@@ -99,17 +99,20 @@ void FlightTaskAutoFollowTarget::update_stick_command() {
 	}
 
 	// Throttle for changing follow height
-	float height_change_speed = FOLLOW_HEIGHT_USER_ADJUST_SPEED * _sticks.getThrottle();
+	float height_change_speed = FOLLOW_HEIGHT_USER_ADJUST_SPEED * _sticks.getPitch();
 	float new_height = _follow_target_height + height_change_speed * _deltatime;
 	_follow_target_height = constrain(new_height, MINIMUM_SAFETY_ALTITUDE, 100.f);
 
 	// Yaw for changing follow angle. When user commands +Yaw (right), angle increases (clockwise)
-	float angle_change_speed = FOLLOW_ANGLE_USER_ADJUST_SPEED * _sticks.getYaw();
+	// Constrain adjust speed [rad/s], so that drone can actually catch up. Otherwise, the follow angle
+	// command can be too ahead that it won't end up being responsive to the user.
+	float angle_adjust_speed_max = min(FOLLOW_ANGLE_USER_ADJUST_SPEED, MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance);
+	float angle_change_speed = angle_adjust_speed_max * _sticks.getYaw();
 	float new_angle = _follow_angle_rad + angle_change_speed * _deltatime;
 	_follow_angle_rad = matrix::wrap_pi(new_angle);
 
 	// Pitch for changing distance
-	float distance_change_speed = FOLLOW_DISTANCE_USER_ADJUST_SPEED * _sticks.getPitch();
+	float distance_change_speed = FOLLOW_DISTANCE_USER_ADJUST_SPEED * _sticks.getRoll();
 	float new_distance = _follow_target_distance + distance_change_speed * _deltatime;
 	_follow_target_distance = constrain(new_distance, MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL, 50.f);
 }
