@@ -70,12 +70,15 @@ static constexpr float ALT_ACCEPTANCE_THRESHOLD = 3.0f;
 // is too close to the ground (below MINIMUM_SAFETY_ALTITUDE)
 static constexpr float EMERGENCY_ASCENT_SPEED = 0.2f;
 
-// [us] If the target estimator output isn't updated longer than this, reset pose filter.
-static constexpr float TARGET_ESTIMATOR_TIMEOUT_US = 1500000UL;
+// [m] Minimum distance between drone and target for the drone to do any yaw control.
+static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
 
 // Second order filter parameter for target position filter
 static constexpr float TARGET_POSE_FILTER_NATURAL_FREQUENCY = 1.0f; // [rad/s]
 static constexpr float TARGET_POSE_FILTER_DAMPING_RATIO = 0.7071;
+
+// [us] If the target estimator output isn't updated longer than this, reset pose filter.
+static constexpr uint64_t TARGET_ESTIMATOR_TIMEOUT_US = 1500000UL;
 
 // [m/s] Velocity deadzone for which, under this velocity, the target orientation
 // tracking will freeze, since orientation can be noisy in low velocities
@@ -83,9 +86,6 @@ static constexpr float TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING = 1.0;
 
 // [m/s] Velocity limit to limit orbital angular rate depending on follow distance
 static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
-
-// [m] Minimum distance between drone and target for the drone to do any yaw control.
-static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
 
 // Yaw setpoint filter to avoid jitter-ness, which can happen because the yaw is
 // calculated off of position offset between target & drone, which updates very frequently.
