@@ -54,6 +54,8 @@ VtolTakeoff::on_activation()
 	if (_navigator->home_position_valid()) {
 		set_takeoff_position();
 		_takeoff_state = vtol_takeoff_state::TAKEOFF_HOVER;
+		_navigator->reset_cruising_speed();
+		_navigator->set_cruising_throttle();
 	}
 }
 
@@ -73,6 +75,7 @@ VtolTakeoff::on_active()
 				mission_apply_limitation(_mission_item);
 				mission_item_to_position_setpoint(_mission_item, &pos_sp_triplet->current);
 				pos_sp_triplet->current.disable_weather_vane = true;
+				pos_sp_triplet->current.cruising_speed = -1.f;
 				_navigator->set_position_setpoint_triplet_updated();
 				reset_mission_item_reached();
 
@@ -120,6 +123,8 @@ VtolTakeoff::on_active()
 				pos_sp_triplet->current.lat = _loiter_location(0);
 				pos_sp_triplet->current.lon = _loiter_location(1);
 				pos_sp_triplet->current.type = position_setpoint_s::SETPOINT_TYPE_LOITER;
+				pos_sp_triplet->current.cruising_speed = -1.f;
+				pos_sp_triplet->current.cruising_throttle = -1.f;
 
 				_mission_item.lat = pos_sp_triplet->current.lat;
 				_mission_item.lon = pos_sp_triplet->current.lon;
