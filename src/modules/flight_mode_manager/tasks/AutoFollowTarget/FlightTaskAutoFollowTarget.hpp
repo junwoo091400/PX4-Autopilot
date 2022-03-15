@@ -209,7 +209,8 @@ protected:
 	// Variable to remember the home position's z coordinate, which will be baseline for the position z setpoint
 	float _home_position_z{0.0f};
 
-	DEFINE_PARAMETERS(
+	DEFINE_PARAMETERS_CUSTOM_PARENT(
+		FlightTask,
 		(ParamFloat<px4::params::NAV_FT_HT>) _param_nav_ft_ht,
 		(ParamFloat<px4::params::NAV_FT_DST>) _param_nav_ft_dst,
 		(ParamInt<px4::params::NAV_FT_FS>) _param_nav_ft_fs,
