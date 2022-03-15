@@ -141,6 +141,7 @@ void Ekf::controlFusionModes()
 		const Vector3f pos_offset_body = _params.rng_pos_body - _params.imu_pos_body;
 		const Vector3f pos_offset_earth = _R_to_earth * pos_offset_body;
 		_range_sensor.setRange(_range_sensor.getRange() + pos_offset_earth(2) / _range_sensor.getCosTilt());
+		_rng_consistency_check.update(_range_sensor.getDistBottom(), getRngHeightVariance(), _state.vel(2), P(6, 6), static_cast<float>(_time_last_imu) * 1e-6f);
 	}
 
 	// We don't fuse flow data immediately because we have to wait for the mid integration point to fall behind the fusion time horizon.
