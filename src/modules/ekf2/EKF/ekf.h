@@ -933,8 +933,9 @@ private:
 
 	void checkGroundEffectTimeout();
 
-	// return an estimation of the GPS altitude variance
+	// return an estimation of the sensor altitude variance
 	float getGpsHeightVariance();
+	float getRngHeightVariance() const;
 
 	// calculate the measurement variance for the optical flow sensor
 	float calcOptFlowMeasVar();

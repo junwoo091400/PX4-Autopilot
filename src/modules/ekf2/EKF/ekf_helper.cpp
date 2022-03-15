@@ -1379,6 +1379,14 @@ void Ekf::updateBaroHgtBias()
 	}
 }
 
+float Ekf::getRngHeightVariance() const
+{
+	const float dist_dependant_var = sq(_params.range_noise_scaler * _range_sensor.getDistBottom());
+	const float var = sq(_params.range_noise) + dist_dependant_var;
+	const float var_sat = fmaxf(var, 0.01f);
+	return var_sat;
+}
+
 void Ekf::checkGroundEffectTimeout()
 {
 	// Turn off ground effect compensation if it times out
