@@ -102,16 +102,6 @@ PARAM_DEFINE_INT32(NAV_FT_FS, 1);
 PARAM_DEFINE_INT32(NAV_FT_ALT_M, 0);
 
 /**
- * Gimbal tracking mode
- *
- * @value 0 2D tracking: Point at target XY coordinates, and at ground Z coordinate
- * @value 1 2D tracking with terrain: Point at target XY coordinates, and at terrain Z coordinate
- * @value 2 3D tracking: Point at target XYZ coordinates
- * @group Follow target
- */
-PARAM_DEFINE_INT32(NAV_FT_GMB_M, 0);
-
-/**
  * Dynamic filtering algorithm responsiveness to target movement in Target Estimator
  *
  * lower values increase the responsiveness to changing long lat
@@ -123,23 +113,3 @@ PARAM_DEFINE_INT32(NAV_FT_GMB_M, 0);
  * @group Follow target
  */
 PARAM_DEFINE_FLOAT(NAV_FT_RS, 0.1f);
-
-/**
- * Yaw Setpoint Filtering Enable
- *
- * @boolean
- * @group Follow target
- */
-PARAM_DEFINE_INT32(NAV_FT_YAW_FT, 0);
-
-/**
- * Target Pose filter's natural angular rate setting [rad/s]
- *
- * The output of the Target estimator will be filtered via 2nd order filter with this natural angular rate
- *
- * @unit rad/s
- * @min 0.1
- * @decimal 1
- * @group Follow target
- */
-PARAM_DEFINE_FLOAT(NAV_FT_FILT_R, 1.0f);
