@@ -69,14 +69,14 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	}
 
 	_target_pose_filter.reset(Vector3f{NAN, NAN, NAN});
-	_target_pose_filter.setParameters(_param_nav_ft_filter_r.get(), TARGET_POSE_FILTER_DAMPING_RATIO);
+	_target_pose_filter.setParameters(TARGET_POSE_FILTER_NATURAL_FREQUENCY, TARGET_POSE_FILTER_DAMPING_RATIO);
 
 	// We don't command the yawspeed, since only the yaw can be calculated off of the target
 	_yawspeed_setpoint = 0.f;
 	_yaw_setpoint_filter.reset(NAN);
 
 	// Update the internally tracaked Follow Target characteristics
-	_follow_angle_rad = math::radians(update_follow_me_angle_setting(_param_nav_ft_fs.get()));
+	_follow_angle_rad = math::radians(get_follow_me_angle_setting(_param_nav_ft_fs.get()));
 	_follow_target_distance = _param_nav_ft_dst.get();
 	_follow_target_height = _param_nav_ft_ht.get();
 
@@ -185,7 +185,7 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, f
 	}
 }
 
-Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f target_position)
+Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(Vector3f target_position)
 {
 	Vector3f drone_desired_position{NAN, NAN, NAN};
 
@@ -204,27 +204,52 @@ Vector3f FlightTaskAutoFollowTarget::calculate_drone_desired_position(Vector3f t
 	float ground_z_estimate = _position(2) + _dist_to_ground;
 
 	// Z-position based off curent and initial target altitude
-	// TODO: Parameter NAV_MIN_FT_HT has been repurposed to be used as the desired
-	// altitude above the target. Clarify best solution.
 	switch (_param_nav_ft_alt_m.get()) {
-	case FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN:
-		drone_desired_position(2) = ground_z_estimate - _follow_target_height;
-		break;
+		case FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN:
+			drone_desired_position(2) = ground_z_estimate - _follow_target_height;
+			break;
 
-	case FOLLOW_ALTITUDE_MODE_TRACK_TARGET:
-		drone_desired_position(2) = target_position(2) - _follow_target_height;
-		break;
+		case FOLLOW_ALTITUDE_MODE_TRACK_TARGET:
+			drone_desired_position(2) = target_position(2) - _follow_target_height;
+			break;
 
-	case FOLLOW_ALTITUDE_MODE_CONSTANT:
+		case FOLLOW_ALTITUDE_MODE_CONSTANT:
 
-	// FALLTHROUGH
+		// FALLTHROUGH
 
-	default:
-		// Calculate the desired Z position relative to the home position
-		drone_desired_position(2) = _home_position_z - _follow_target_height;
+		default:
+			// Calculate the desired Z position relative to the home position
+			drone_desired_position(2) = _home_position_z - _follow_target_height;
 	}
 
 	return drone_desired_position;
+}
+
+
+float FlightTaskAutoFollowTarget::calculate_gimbal_height(float target_height) {
+	float gimbal_height{0.0f};
+
+	switch (_param_nav_ft_alt_m.get()) {
+		case FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN:
+			// Point the gimbal at the ground level in this tracking mode
+			gimbal_height = _dist_to_ground;
+			break;
+
+		case FOLLOW_ALTITUDE_MODE_TRACK_TARGET:
+			// Point the gimbal at the target's 3D coordinates
+			gimbal_height = -_position(2) - target_height;
+			break;
+
+		case FOLLOW_ALTITUDE_MODE_CONSTANT:
+
+		//FALLTHROUGH
+
+		default:
+			gimbal_height = _home_position_z -_position(2); // Assume target is at home position's altitude
+			break;
+	}
+
+	return gimbal_height;
 }
 
 
@@ -254,7 +279,7 @@ bool FlightTaskAutoFollowTarget::update()
 		_current_orbit_angle = update_orbit_angle(_target_orientation_rad, _follow_angle_rad, max_orbit_rate);
 
 		// Calculate desired position by applying orbit angle around the target
-		Vector3f drone_desired_position = calculate_drone_desired_position(target_position_filtered);
+		Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered);
 
 		if (PX4_ISFINITE(drone_desired_position(0)) && PX4_ISFINITE(drone_desired_position(1))
 		    && PX4_ISFINITE(drone_desired_position(2))) {
@@ -295,7 +320,7 @@ bool FlightTaskAutoFollowTarget::update()
 			_drone_to_target_heading = yaw_setpoint_raw;
 
 			// Check if yaw setpoint filtering is enabled
-			if (_param_nav_ft_yaw_ft.get()) {
+			if (YAW_SETPOINT_FILTER_ENABLE) {
 				// If the filter hasn't been initialized yet, reset the state to raw heading value
 				if (!PX4_ISFINITE(_yaw_setpoint_filter.getState())) {
 					_yaw_setpoint_filter.reset(yaw_setpoint_raw);
@@ -306,7 +331,7 @@ bool FlightTaskAutoFollowTarget::update()
 				float yaw_setpoint_raw_unwrapped = matrix::unwrap_pi(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
 
 				// Set the parameters for the filter to take update time interval into account
-				_yaw_setpoint_filter.setParameters(_deltatime, YAW_SETPOINT_FILTER_ALPHA);
+				_yaw_setpoint_filter.setParameters(_deltatime, YAW_SETPOINT_FILTER_TIME_CONSTANT);
 				_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
 
 				// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
@@ -317,32 +342,9 @@ bool FlightTaskAutoFollowTarget::update()
 				// Yaw setpoint filtering disabled, set raw yaw setpoint
 				_yaw_setpoint = yaw_setpoint_raw;
 			}
-
-
 		}
-
 		// Gimbal setpoint
-		float gimbal_height = 0;
-
-		switch (_param_nav_ft_gmb_m.get()) {
-		case FOLLOW_GIMBAL_MODE_2D:
-			gimbal_height = _home_position_z -_position(2); // Assume target is at home position's altitude
-			break;
-
-		case FOLLOW_GIMBAL_MODE_2D_WITH_TERRAIN:
-			// Point the gimbal at the ground level in this tracking mode
-			gimbal_height = _dist_to_ground;
-			break;
-
-		case FOLLOW_GIMBAL_MODE_3D:
-			// Point the gimbal at the target's 3D coordinates
-			gimbal_height = -(_position(2) - (target_position_filtered(2)));
-			break;
-
-		default:
-			break;
-		}
-
+		float gimbal_height = calculate_gimbal_height(target_position_filtered(2));
 		point_gimbal_at(drone_to_target_xy.norm(), gimbal_height);
 
 	} else {
@@ -356,13 +358,8 @@ bool FlightTaskAutoFollowTarget::update()
 	_target_pose_filter.getState().copyTo(follow_target_status.pos_est_filtered);
 	_target_pose_filter.getRate().copyTo(follow_target_status.vel_est_filtered);
 
-	follow_target_status.tracked_target_orientation = _target_orientation_rad;
+	follow_target_status.drone_to_target_heading = _drone_to_target_heading;
 	follow_target_status.follow_angle = _follow_angle_rad;
-	follow_target_status.current_orbit_angle = _current_orbit_angle;
-
-	follow_target_status.drone_to_target_heading = _drone_to_target_heading; // debug
-	_orbit_tangential_velocity.copyTo(follow_target_status.orbit_tangential_velocity); // debug
-
 	follow_target_status.emergency_ascent = _emergency_ascent;
 	follow_target_status.gimbal_pitch = _gimbal_pitch;
 
@@ -373,7 +370,7 @@ bool FlightTaskAutoFollowTarget::update()
 	return true;
 }
 
-float FlightTaskAutoFollowTarget::update_follow_me_angle_setting(int param_nav_ft_fs) const
+float FlightTaskAutoFollowTarget::get_follow_me_angle_setting(int param_nav_ft_fs) const
 {
 	switch (param_nav_ft_fs) {
 	case FOLLOW_PERSPECTIVE_BEHIND:

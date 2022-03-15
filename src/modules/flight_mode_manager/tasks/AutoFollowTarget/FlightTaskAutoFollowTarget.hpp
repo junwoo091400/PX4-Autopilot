@@ -89,7 +89,10 @@ static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
 
 // Yaw setpoint filter to avoid jitter-ness, which can happen because the yaw is
 // calculated off of position offset between target & drone, which updates very frequently.
-static constexpr float YAW_SETPOINT_FILTER_ALPHA = 0.5;
+static constexpr float YAW_SETPOINT_FILTER_TIME_CONSTANT = 0.1;
+
+// Yaw setpoint enabler varaible to keep the yaw filtering scheme
+static constexpr bool YAW_SETPOINT_FILTER_ENABLE = true;
 
 // [m/s] Speed to which follow distance will be adjusted by, when commanded in full deflection via RC command
 static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 1.5;
@@ -111,6 +114,7 @@ public:
 	bool update() override;
 
 protected:
+	// Follow Perspectives set by the parameter NAV_FT_FS
 	enum {
 		FOLLOW_PERSPECTIVE_NONE,
 		FOLLOW_PERSPECTIVE_BEHIND,
@@ -137,28 +141,52 @@ protected:
 		FOLLOW_PERSPECTIVE_BEHIND_LEFT_ANGLE_DEG = 225
 	};
 
+	// Follow Altitude modes set by the parameter NAV_FT_ALT_M
 	enum {
 		FOLLOW_ALTITUDE_MODE_CONSTANT,
 		FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN,
 		FOLLOW_ALTITUDE_MODE_TRACK_TARGET
 	};
 
-	enum {
-		FOLLOW_GIMBAL_MODE_2D,
-		FOLLOW_GIMBAL_MODE_2D_WITH_TERRAIN,
-		FOLLOW_GIMBAL_MODE_3D
-	};
-
+	/**
+	 * Get the RC command from the user to adjust Follow Angle, Distance and Height
+	 */
 	void update_stick_command();
 
+	/**
+	 * Update the Second Order Target Pose Filter to track target position and velocity
+	 */
 	void update_target_pose_filter(follow_target_estimator_s follow_target_estimator);
 
+	/**
+	 * Calculate the tracked target orientation
+	 */
 	float update_target_orientation(Vector2f target_velocity);
 
+	/**
+	 * Updates the orbit angle setpoint, taking into account the maximal orbit rate
+	 *
+	 * @return Angle [rad] Next feasible orbit angle setpoint
+	 */
 	float update_orbit_angle(float target_orientation, float fllow_angle, float max_orbital_rate);
 
-	Vector3f calculate_drone_desired_position(Vector3f target_position);
+	/**
+	 * Calculates desired drone position, taking into account the follow target altitude mode
+	 *
+	 * @return Position [Vector3f] Final position setpoint for the drone
+	 */
+	Vector3f calculate_desired_drone_position(Vector3f target_position);
 
+	/**
+	 * Calculate the gimbal height offset to the target to calculate the pitch angle command
+	 *
+	 * @return Height [m] Difference between the target and the drone
+	 */
+	float calculate_gimbal_height(float target_height);
+
+	/**
+	 * Updates gimbal pitch command to track the target, given xy distance and z (height) difference.
+	 */
 	void point_gimbal_at(float xy_distance, float z_distance);
 
 	/**
@@ -167,7 +195,7 @@ protected:
 	 * @param param_nav_ft_fs value of the parameter NAV_FT_FS
 	 * @return Angle [deg] from which the drone should view the target while following it, with zero degrees indicating the target's 12 o'clock
 	 */
-	float update_follow_me_angle_setting(int param_nav_ft_fs) const;
+	float get_follow_me_angle_setting(int param_nav_ft_fs) const;
 
 	// Sticks object to read in stick commands from the user
 	Sticks _sticks;
@@ -209,22 +237,18 @@ protected:
 	// Variable to remember the home position's z coordinate, which will be baseline for the position z setpoint
 	float _home_position_z{0.0f};
 
+	float _gimbal_pitch{0};
+
 	DEFINE_PARAMETERS_CUSTOM_PARENT(
 		FlightTask,
 		(ParamFloat<px4::params::NAV_FT_HT>) _param_nav_ft_ht,
 		(ParamFloat<px4::params::NAV_FT_DST>) _param_nav_ft_dst,
 		(ParamInt<px4::params::NAV_FT_FS>) _param_nav_ft_fs,
-		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m,
-		(ParamInt<px4::params::NAV_FT_GMB_M>) _param_nav_ft_gmb_m,
-		(ParamInt<px4::params::NAV_FT_YAW_FT>) _param_nav_ft_yaw_ft,
-		(ParamFloat<px4::params::NAV_FT_FILT_R>) _param_nav_ft_filter_r
+		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m
 	)
 
 	uORB::Subscription _follow_target_estimator_sub{ORB_ID(follow_target_estimator)};
 
 	uORB::PublicationMulti<follow_target_status_s> _follow_target_status_pub{ORB_ID(follow_target_status)};
 	uORB::PublicationMulti<gimbal_manager_set_attitude_s> _gimbal_manager_set_attitude_pub{ORB_ID(gimbal_manager_set_attitude)};
-
-	// Debugging
-	float _gimbal_pitch{0};
 };
