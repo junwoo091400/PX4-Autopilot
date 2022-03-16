@@ -44,7 +44,7 @@
  */
 
 /**
- * Minimum follow target altitude
+ * Follow target altitude
  *
  * The height in meters for following a target
  *
@@ -113,3 +113,13 @@ PARAM_DEFINE_INT32(NAV_FT_ALT_M, 0);
  * @group Follow target
  */
 PARAM_DEFINE_FLOAT(NAV_FT_RS, 0.1f);
+
+/**
+ * Yaw setpoint filter time constant
+ *
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @group Follow target
+ */
+PARAM_DEFINE_FLOAT(NAV_FT_YAW_T, 0.1f);
