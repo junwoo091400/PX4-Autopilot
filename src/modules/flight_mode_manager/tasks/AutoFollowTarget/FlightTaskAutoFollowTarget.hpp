@@ -149,17 +149,19 @@ protected:
 	};
 
 	/**
-	 * Get the RC command from the user to adjust Follow Angle, Distance and Height
+	 * Get the RC command from the user to adjust Follow Angle, Distance and Height internally
 	 */
 	void update_stick_command();
 
 	/**
-	 * Update the Second Order Target Pose Filter to track target position and velocity
+	 * Update the Second Order Target Pose Filter to track kinematically feasible target position and velocity
 	 */
 	void update_target_pose_filter(follow_target_estimator_s follow_target_estimator);
 
 	/**
 	 * Calculate the tracked target orientation
+	 *
+	 * @return Angle [rad] Tracked target orientation (heading)
 	 */
 	float update_target_orientation(Vector2f target_velocity);
 
@@ -185,7 +187,7 @@ protected:
 	float calculate_gimbal_height(float target_height);
 
 	/**
-	 * Updates gimbal pitch command to track the target, given xy distance and z (height) difference.
+	 * Publishes gimbal control command to track the target, given xy distance and z (height) difference.
 	 */
 	void point_gimbal_at(float xy_distance, float z_distance);
 
@@ -210,13 +212,13 @@ protected:
 	// Second Order Filter to calculate kinematically feasible target position
 	SecondOrderReferenceModel<matrix::Vector3f> _target_pose_filter;
 
-	// Estimated (Filtered) target orientation setpoint
-	float _target_orientation_rad{0.0f};
-
 	// Internally tracked Follow Target characteristics, to allow RC control input adjustments
 	float _follow_target_distance{0.0f};
 	float _follow_target_height{0.0f};
 	float _follow_angle_rad{0.0f}; // 0 degrees following from front, and then clockwise rotation
+
+	// Estimated (Filtered) target orientation setpoint
+	float _target_orientation_rad{0.0f};
 
 	// Current orbit angle measured in global frame, against the target
 	float _current_orbit_angle{0.0f};
