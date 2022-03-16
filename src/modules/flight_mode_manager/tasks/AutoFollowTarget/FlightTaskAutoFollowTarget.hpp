@@ -220,14 +220,20 @@ protected:
 	// Estimated (Filtered) target orientation setpoint
 	float _target_orientation_rad{0.0f};
 
-	// Current orbit angle measured in global frame, against the target
-	float _current_orbit_angle{0.0f};
+	// Orbit angle setpoint, measured in global frame, against the target
+	float _orbit_angle_setpoint{0.0f};
+
+	// Actual drone to target heading [rad]
+	float _drone_to_target_heading{0.0f};
+
+	// Actual orbit angle in relation to the target
+	float _measured_orbit_angle{0.0f};
+
+	// Actual drone to target 2d position vector
+	Vector2f _drone_to_target_vector{0.0f, 0.0f};
 
 	// Tracked orbit tangential speed, to compensate for the orbital motion for velocity setpoints
 	Vector2f _orbit_tangential_velocity{0.0f, 0.0f};
-
-	// Unfiltered drone to target heading
-	float _drone_to_target_heading{0.0f};
 
 	// NOTE: If more of these internal state variables come into existence, it
 	// would make sense to create an internal state machine with a single enum
