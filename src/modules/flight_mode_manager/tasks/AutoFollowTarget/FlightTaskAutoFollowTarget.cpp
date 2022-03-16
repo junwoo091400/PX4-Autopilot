@@ -171,13 +171,16 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, f
 	// Calculate unit vector pointed towrads the orbital step direction
 	const Vector2f orbital_step_unit_vector = Vector2f(-sin(_current_orbit_angle), cos(_current_orbit_angle)) * orbit_angle_error_sign;
 
+	// Calculate maximal orbital velocity vector [m/s] as angular rate [rad/s] * follow distance [m]
+	const Vector2f orbital_max_velocity_vector = orbital_step_unit_vector * max_orbital_rate * _follow_target_distance;
+
 	if(fabsf(orbit_angle_error) < max_orbital_step) {
 		const float orbital_velocity_ratio = fabsf(orbit_angle_error) / max_orbital_step; // Current orbital step / Max orbital step, for velocity calculation
-		_orbit_tangential_velocity = orbital_step_unit_vector * max_orbital_rate * orbital_velocity_ratio;
+		_orbit_tangential_velocity = orbital_max_velocity_vector * orbital_velocity_ratio;
 		return raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
 	}
 	else {
-		_orbit_tangential_velocity = orbital_step_unit_vector * max_orbital_rate;
+		_orbit_tangential_velocity = orbital_max_velocity_vector;
 		return matrix::wrap_pi(_current_orbit_angle + orbit_angle_error_sign * max_orbital_step); // Take a step
 	}
 }
