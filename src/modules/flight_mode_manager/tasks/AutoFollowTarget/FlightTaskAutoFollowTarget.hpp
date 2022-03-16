@@ -92,7 +92,7 @@ static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
 static constexpr float YAW_SETPOINT_FILTER_TIME_CONSTANT = 0.1;
 
 // Yaw setpoint enabler varaible to keep the yaw filtering scheme
-static constexpr bool YAW_SETPOINT_FILTER_ENABLE = false;
+static constexpr bool YAW_SETPOINT_FILTER_ENABLE = true;
 
 // [m/s] Speed to which follow distance will be adjusted by, when commanded in full deflection via RC command
 static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 1.5;
@@ -246,7 +246,8 @@ protected:
 		(ParamFloat<px4::params::NAV_FT_HT>) _param_nav_ft_ht,
 		(ParamFloat<px4::params::NAV_FT_DST>) _param_nav_ft_dst,
 		(ParamInt<px4::params::NAV_FT_FS>) _param_nav_ft_fs,
-		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m
+		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m,
+		(ParamFloat<px4::params::NAV_FT_YAW_T>) _param_ft_yaw_t
 	)
 
 	uORB::Subscription _follow_target_estimator_sub{ORB_ID(follow_target_estimator)};

@@ -328,7 +328,7 @@ bool FlightTaskAutoFollowTarget::update()
 				float yaw_setpoint_raw_unwrapped = matrix::unwrap_pi(_yaw_setpoint_filter.getState(), yaw_setpoint_raw);
 
 				// Set the parameters for the filter to take update time interval into account
-				_yaw_setpoint_filter.setParameters(_deltatime, YAW_SETPOINT_FILTER_TIME_CONSTANT);
+				_yaw_setpoint_filter.setParameters(_deltatime, _param_ft_yaw_t.get());
 				_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
 
 				// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
