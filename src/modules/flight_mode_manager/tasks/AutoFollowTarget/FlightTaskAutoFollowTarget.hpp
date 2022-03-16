@@ -166,11 +166,11 @@ protected:
 	float update_target_orientation(Vector2f target_velocity);
 
 	/**
-	 * Updates the orbit angle setpoint, taking into account the maximal orbit rate
+	 * Updates the orbit angle setpoint, taking into account the maximal orbit tangential speed
 	 *
 	 * @return Angle [rad] Next feasible orbit angle setpoint
 	 */
-	float update_orbit_angle(float target_orientation, float fllow_angle, float max_orbital_rate);
+	float update_orbit_angle(float target_orientation, float fllow_angle);
 
 	/**
 	 * Calculates desired drone position, taking into account the follow target altitude mode

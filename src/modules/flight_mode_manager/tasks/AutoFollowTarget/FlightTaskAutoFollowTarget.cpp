@@ -157,7 +157,7 @@ float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velo
 	return _target_orientation_rad;
 }
 
-float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, float follow_angle, float max_orbital_rate) {
+float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, float follow_angle) {
 	// Raw target orbit (setpoint) angle
 	const float raw_target_orbit_angle = matrix::wrap_pi(target_orientation + follow_angle);
 
@@ -165,14 +165,14 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, f
 	const float orbit_angle_error = matrix::wrap_pi(raw_target_orbit_angle - _current_orbit_angle);
 	const float orbit_angle_error_sign = matrix::sign(orbit_angle_error);
 
+	// Calculate maximum orbital velocity vector perpendicular to current orbit angle setpoint
+	const Vector2f orbital_max_velocity_vector = Vector2f(-sin(_current_orbit_angle), cos(_current_orbit_angle)) * orbit_angle_error_sign * MAXIMUM_TANGENTIAL_ORBITING_SPEED;
+
 	// Calculate maximum orbital angle step we can take for this iteration
+	float max_orbital_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance;
+
+	// Calculate maximum orbital angle step we can take [rad]
 	const float max_orbital_step = max_orbital_rate * _deltatime;
-
-	// Calculate unit vector pointed towrads the orbital step direction
-	const Vector2f orbital_step_unit_vector = Vector2f(-sin(_current_orbit_angle), cos(_current_orbit_angle)) * orbit_angle_error_sign;
-
-	// Calculate maximal orbital velocity vector [m/s] as angular rate [rad/s] * follow distance [m]
-	const Vector2f orbital_max_velocity_vector = orbital_step_unit_vector * max_orbital_rate * _follow_target_distance;
 
 	if(fabsf(orbit_angle_error) < max_orbital_step) {
 		const float orbital_velocity_ratio = fabsf(orbit_angle_error) / max_orbital_step; // Current orbital step / Max orbital step, for velocity calculation
@@ -269,14 +269,11 @@ bool FlightTaskAutoFollowTarget::update()
 		// Update follow distance, angle and height via RC commands
 		update_stick_command();
 
-		// Calculate maximum orbital angular rate, depending on the follow distance
-		const float max_orbit_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance;
-
 		// Calculate target orientation to track [rad]
 		_target_orientation_rad = update_target_orientation(target_velocity_filtered.xy());
 
 		// Update the new orbit angle (rate constrained)
-		_current_orbit_angle = update_orbit_angle(_target_orientation_rad, _follow_angle_rad, max_orbit_rate);
+		_current_orbit_angle = update_orbit_angle(_target_orientation_rad, _follow_angle_rad);
 
 		// Calculate desired position by applying orbit angle around the target
 		Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered);
