@@ -280,7 +280,7 @@ bool FlightTaskAutoFollowTarget::update()
 		// Calculate heading to the target (for Yaw setpoint)
 		_drone_to_target_heading = atan2f(_drone_to_target_vector(1), _drone_to_target_vector(0));
 		// Calculate current orbit angle around the target, taken into consideration in RC Follow Angle Adjustment
-		_measured_orbit_angle = matrix::wrap_pi(_drone_to_target_heading + M_PIf32);
+		_measured_orbit_angle = matrix::wrap_pi(_drone_to_target_heading + M_PI_F);
 
 		// Update follow distance, angle and height via RC commands
 		update_stick_command();
