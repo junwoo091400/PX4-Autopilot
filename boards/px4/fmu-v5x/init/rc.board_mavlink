@@ -15,6 +15,8 @@ then
 
 	mavlink start -d /dev/ttyS4 -b 3000000 -r 290000 -m onboard_low_bandwidth -x -z $S_FORWARD
 
+	microdds_client start -t udp -h 192.168.0.5 -p 15555 -l
+
 	# Ensure nothing else starts on TEL2 (ttyS4)
 	set PRT_TEL2_ 1
 
