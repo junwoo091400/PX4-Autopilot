@@ -770,6 +770,7 @@ void EKF2::PublishInnovations(const hrt_abstime &timestamp, const imuSample &imu
 	_ekf.getAirspeedInnov(innovations.airspeed);
 	_ekf.getBetaInnov(innovations.beta);
 	_ekf.getHaglInnov(innovations.hagl);
+	_ekf.getHaglRateInnov(innovations.hagl_rate);
 	// Not yet supported
 	innovations.aux_vvel = NAN;
 
@@ -806,6 +807,7 @@ void EKF2::PublishInnovationTestRatios(const hrt_abstime &timestamp)
 	_ekf.getAirspeedInnovRatio(test_ratios.airspeed);
 	_ekf.getBetaInnovRatio(test_ratios.beta);
 	_ekf.getHaglInnovRatio(test_ratios.hagl);
+	_ekf.getHaglRateInnovRatio(test_ratios.hagl_rate);
 	// Not yet supported
 	test_ratios.aux_vvel = NAN;
 
@@ -830,6 +832,7 @@ void EKF2::PublishInnovationVariances(const hrt_abstime &timestamp)
 	_ekf.getAirspeedInnovVar(variances.airspeed);
 	_ekf.getBetaInnovVar(variances.beta);
 	_ekf.getHaglInnovVar(variances.hagl);
+	_ekf.getHaglRateInnovVar(variances.hagl_rate);
 	// Not yet supported
 	variances.aux_vvel = NAN;
 
