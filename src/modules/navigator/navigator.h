@@ -89,11 +89,18 @@ using namespace time_literals;
  */
 #define NAVIGATOR_MODE_ARRAY_SIZE 8
 
-struct custom_action_s {
+struct CustomAction {
+	enum class FailureAction {
+		IGNORE = 0,
+		LOITER = 1,
+		RTL = 2
+	};
+
 	int8_t id{-1};
 	uint64_t timeout;
 	bool timer_started;
 	uint64_t start_time;
+	FailureAction failure_action;
 };
 
 class Navigator : public ModuleBase<Navigator>, public ModuleParams
@@ -318,6 +325,8 @@ public:
 
 	void set_mission_failure_heading_timeout();
 
+	void handle_custom_action_failure();
+
 	void setTerrainFollowerState();
 
 	void setMissionLandingInProgress(bool in_progress) { _mission_landing_in_progress = in_progress; }
@@ -328,8 +337,8 @@ public:
 
 	bool get_in_custom_action() { return _in_custom_action; }
 	void set_in_custom_action() { _in_custom_action = true; }
-	custom_action_s get_custom_action() { return _custom_action; }
-	void set_custom_action(const custom_action_s &custom_action) { _custom_action = custom_action; }
+	CustomAction get_custom_action() { return _custom_action; }
+	void set_custom_action(const CustomAction &custom_action) { _custom_action = custom_action; }
 
 	bool on_mission_landing() { return _mission.landing(); }
 
@@ -454,7 +463,7 @@ private:
 
 	bool		_in_custom_action{false};		/**< currently in a custom action **/
 	bool 		_custom_action_timeout{false};		/**> custom action timed out **/
-	custom_action_s _custom_action{};			/**< current custom action **/
+	CustomAction	_custom_action{};			/**< current custom action **/
 	uint64_t	_custom_action_ack_last_time{0};	/**< last time an ack for the custom action command was received **/
 	bool		_reset_custom_action{false};		/**< reset custom action status flag **/
 

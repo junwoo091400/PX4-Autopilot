@@ -1242,9 +1242,10 @@ Mission::set_mission_items()
 				if (_mission_item.nav_cmd == NAV_CMD_WAYPOINT_USER_1
 				    && !_navigator->get_in_custom_action()
 				    && _current_mission_index != _previous_custom_action_mission_index) {
-					custom_action_s custom_action{};
+					CustomAction custom_action{};
 					custom_action.id = _mission_item.params[0];
 					custom_action.timeout = _mission_item.params[2] * 1000000;
+					custom_action.failure_action = static_cast<CustomAction::FailureAction>(_mission_item.params[3]);
 
 					_navigator->set_custom_action(custom_action);
 					_navigator->set_in_custom_action();

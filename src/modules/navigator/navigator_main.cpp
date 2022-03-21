@@ -259,27 +259,29 @@ void Navigator::run()
 					} else if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_FAILED && !_reset_custom_action) {
 						// This makes sure that the warning is only printed once, even if multiple FAILED ACKs are received
 						if (_custom_action.id != -1) {
-							mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u failed to be processed / executed. Continuing mission...",
+							mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u failed to be processed / executed.",
 									    _custom_action.id);
 						}
 
+						handle_custom_action_failure();
 						reset_custom_action();
 						_custom_action_timeout = true;
 
 					} else if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_CANCELLED && !_reset_custom_action) {
 						// This makes sure that the warning is only printed once, even if multiple CANCELLED ACKs are received
 						if (_custom_action.id != -1) {
-							mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u cancelled. Continuing mission...",
+							mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u cancelled.",
 									    _custom_action.id);
 						}
 
+						handle_custom_action_failure();
 						reset_custom_action();
 						_custom_action_timeout = true;
 
 					}
 
 				} else {
-					mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u progress timed out. Continuing mission...",
+					mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u progress timed out.",
 							    _custom_action.id);
 
 					// send message to cancel the action process on the external system
@@ -290,7 +292,7 @@ void Navigator::run()
 					vcmd_cancel.target_system = _vstatus.system_id;;
 					vcmd_cancel.target_component = 193; // MAV_COMP_ID_ONBOARD_COMPUTER3
 					publish_vehicle_cmd_cancel(&vcmd_cancel);
-
+					handle_custom_action_failure();
 					reset_custom_action();
 					_custom_action_timeout = true;
 				}
@@ -299,7 +301,7 @@ void Navigator::run()
 
 		if (_custom_action.timer_started && _custom_action.start_time > 0
 		    && (hrt_absolute_time() - _custom_action.start_time) >= _custom_action.timeout && _custom_action.timeout > 0) {
-			mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u timed out. Continuing mission...",
+			mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u timed out.",
 					    _custom_action.id);
 
 			// send message to cancel the action process on the external system
@@ -310,7 +312,7 @@ void Navigator::run()
 			vcmd_cancel.target_system = _vstatus.system_id;;
 			vcmd_cancel.target_component = 193; // MAV_COMP_ID_ONBOARD_COMPUTER3
 			publish_vehicle_cmd_cancel(&vcmd_cancel);
-
+			handle_custom_action_failure();
 			reset_custom_action();
 
 			_custom_action_timeout = true;
@@ -1656,6 +1658,44 @@ void Navigator::set_mission_failure_heading_timeout()
 		mavlink_log_critical(&_mavlink_log_pub, "unable to reach heading within timeout\t");
 		events::send(events::ID("navigator_mission_failure_heading"), events::Log::Critical,
 			     "Mission failure: unable to reach heading within timeout");
+	}
+}
+
+void Navigator::handle_custom_action_failure()
+{
+	switch (_custom_action.failure_action) {
+	case CustomAction::FailureAction::IGNORE: {
+			mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u continuing mission...",
+					    _custom_action.id);
+			return;
+		}
+
+	case CustomAction::FailureAction::LOITER: {
+			mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u switching to loiter...",
+					    _custom_action.id);
+
+			vehicle_command_s vcmd = {};
+			vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
+			vcmd.param1 = 1;
+			vcmd.param2 = 4; // PX4_CUSTOM_MAIN_MODE_AUTO
+			vcmd.param3 = 3; // PX4_CUSTOM_SUB_MODE_AUTO_LOITER
+			publish_vehicle_cmd(&vcmd);
+			break;
+		}
+
+	case CustomAction::FailureAction::RTL:
+	default: {
+			mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u switching to RTL...",
+					    _custom_action.id);
+
+			vehicle_command_s vcmd = {};
+			vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
+			vcmd.param1 = 1;
+			vcmd.param2 = 4; // PX4_CUSTOM_MAIN_MODE_AUTO
+			vcmd.param3 = 5; // PX4_CUSTOM_SUB_MODE_AUTO_RTL
+			publish_vehicle_cmd(&vcmd);
+			break;
+		}
 	}
 }
 
