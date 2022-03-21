@@ -96,12 +96,22 @@ static constexpr bool YAW_SETPOINT_FILTER_ENABLE = true;
 
 // [m/s] Speed to which follow distance will be adjusted by, when commanded in full deflection via RC command
 static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 1.5;
+// [m] Maximum follow distance that can be set by user's RC adjustment
+static constexpr float FOLLOW_DISTANCE_MAX = 100.f;
 
 // [m/s] Speed to which follow height will be adjusted by, when commanded in full deflection via RC command
 static constexpr float FOLLOW_HEIGHT_USER_ADJUST_SPEED = 1.0;
+// [m] Maximum follow height that can be set by user's RC adjustment
+static constexpr float FOLLOW_HEIGHT_MAX = 100.f;
 
 // [rad/s] Angular to which follow distance will be adjusted by, when commanded in full deflection via RC command
 static constexpr float FOLLOW_ANGLE_USER_ADJUST_SPEED = 1.5;
+
+// [seconds] Arbitrary time window constant that gets multiplied to user adjustment speed, to calculate the
+// 'acceptable' error in orbit angle / height and distance, to which if the difference between the setpoint
+// and actual state is smaller than this error, RC adjustments get applied.
+// This is introduced to prevent setpoint adjustments becoming too diverged from the vehicle's actual position
+static constexpr float USER_ADJUSTMENT_ERROR_TIME_WINDOW = 0.5f;
 
 
 class FlightTaskAutoFollowTarget : public FlightTask
@@ -156,28 +166,26 @@ protected:
 	/**
 	 * Update the Second Order Target Pose Filter to track kinematically feasible target position and velocity
 	 */
-	void update_target_pose_filter(follow_target_estimator_s follow_target_estimator);
+	void update_target_pose_filter(const follow_target_estimator_s &follow_target_estimator);
 
 	/**
 	 * Calculate the tracked target orientation
-	 *
-	 * @return Angle [rad] Tracked target orientation (heading)
 	 */
-	float update_target_orientation(Vector2f target_velocity);
+	void update_target_orientation(const Vector2f &target_velocity, float &current_target_orientation)
 
 	/**
 	 * Updates the orbit angle setpoint, taking into account the maximal orbit tangential speed
 	 *
 	 * @return Angle [rad] Next feasible orbit angle setpoint
 	 */
-	float update_orbit_angle(float target_orientation, float fllow_angle);
+	float update_orbit_angle(const float target_orientation, const float follow_angle, const float orbit_angle_setpoint, Vector2f &orbit_tangential_velocity);
 
 	/**
 	 * Calculates desired drone position, taking into account the follow target altitude mode
 	 *
 	 * @return Position [Vector3f] Final position setpoint for the drone
 	 */
-	Vector3f calculate_desired_drone_position(Vector3f target_position);
+	Vector3f calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint);
 
 	/**
 	 * Calculate the gimbal height offset to the target to calculate the pitch angle command
@@ -231,9 +239,6 @@ protected:
 
 	// Actual drone to target 2d position vector
 	Vector2f _drone_to_target_vector{0.0f, 0.0f};
-
-	// Tracked orbit tangential speed, to compensate for the orbital motion for velocity setpoints
-	Vector2f _orbit_tangential_velocity{0.0f, 0.0f};
 
 	// NOTE: If more of these internal state variables come into existence, it
 	// would make sense to create an internal state machine with a single enum

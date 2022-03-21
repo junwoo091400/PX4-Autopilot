@@ -75,10 +75,10 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	_target_pose_filter.setParameters(TARGET_POSE_FILTER_NATURAL_FREQUENCY, TARGET_POSE_FILTER_DAMPING_RATIO);
 
 	// We don't command the yawspeed, since only the yaw can be calculated off of the target
-	_yawspeed_setpoint = 0.f;
+	_yawspeed_setpoint = NAN;
 	_yaw_setpoint_filter.reset(NAN);
 
-	// Update the internally tracaked Follow Target characteristics
+	// Update the internally tracked Follow Target characteristics
 	_follow_angle_rad = math::radians(get_follow_me_angle_setting(_param_nav_ft_fs.get()));
 	_follow_target_distance = _param_nav_ft_dst.get();
 	_follow_target_height = _param_nav_ft_ht.get();
@@ -91,34 +91,29 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	return ret;
 }
 
-// Update the target pose filter, knowing that target estimator data is valid (checked in the update() main function).
-void FlightTaskAutoFollowTarget::update_target_pose_filter(follow_target_estimator_s follow_target_estimator) {
+void FlightTaskAutoFollowTarget::update_target_pose_filter(const follow_target_estimator_s &follow_target_estimator) {
 	const Vector3f pos_ned_est{follow_target_estimator.pos_est};
 	const Vector3f vel_ned_est{follow_target_estimator.vel_est};
 
 	// Check Follow target estimator's validity & timeout conditions
-	bool target_estimator_timeout = ((follow_target_estimator.timestamp - _last_valid_target_estimator_timestamp) > TARGET_ESTIMATOR_TIMEOUT_US);
+	const bool target_estimator_timeout = ((follow_target_estimator.timestamp - _last_valid_target_estimator_timestamp) > TARGET_ESTIMATOR_TIMEOUT_US);
 
 	// Reset last valid estimator data received timestamp
 	_last_valid_target_estimator_timestamp = follow_target_estimator.timestamp;
 
-	// Handle Timetout cases
-	if(target_estimator_timeout) {
-		// Reset the Target pose filter if it's state is not finite
-		if (!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
-		|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0)) ||
-			!PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) {
-			_target_pose_filter.reset(pos_ned_est, vel_ned_est);
-		}
+	// Reset the filter if any pose filter states are not finite or estimator timed out
+	if ((!PX4_ISFINITE(_target_pose_filter.getState()(0)) || !PX4_ISFINITE(_target_pose_filter.getState()(1))
+		|| !PX4_ISFINITE(_target_pose_filter.getState()(2)) || !PX4_ISFINITE(_target_pose_filter.getRate()(0))
+		|| !PX4_ISFINITE(_target_pose_filter.getRate()(1)) || !PX4_ISFINITE(_target_pose_filter.getRate()(2))) || target_estimator_timeout) {
+		_target_pose_filter.reset(pos_ned_est, vel_ned_est);
 	}
 	else {
-		// Second order target position filter to calculate kinematically feasible target position
 		_target_pose_filter.update(_deltatime, pos_ned_est, vel_ned_est);
 	}
 }
 
-// Updates Follow Target Height, Distance and Follow Angle depending on RC input commands
-void FlightTaskAutoFollowTarget::update_stick_command() {
+void FlightTaskAutoFollowTarget::update_stick_command()
+{
 	// Update the sticks object to fetch recent data
 	_sticks.checkAndUpdateStickInputs();
 
@@ -127,77 +122,75 @@ void FlightTaskAutoFollowTarget::update_stick_command() {
 		return;
 	}
 
-	// Only apply Follow height adjustment if height setpoint and current height are within 1 second window
-	if(fabsf(_position_setpoint(2) - _position(2)) < FOLLOW_HEIGHT_USER_ADJUST_SPEED) {
-		// Throttle for changing follow height
-		float height_change_speed = FOLLOW_HEIGHT_USER_ADJUST_SPEED * _sticks.getThrottle();
-		float new_height = _follow_target_height + height_change_speed * _deltatime;
-		_follow_target_height = constrain(new_height, MINIMUM_SAFETY_ALTITUDE, 100.f);
+	// Only apply Follow height adjustment if height setpoint and current height are within time window
+	if(fabsf(_position_setpoint(2) - _position(2)) < FOLLOW_HEIGHT_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
+		// RC Throttle stick input for changing follow height
+		const float height_change_speed = FOLLOW_HEIGHT_USER_ADJUST_SPEED * _sticks.getThrottle();
+		const float new_height = _follow_target_height + height_change_speed * _deltatime;
+		_follow_target_height = constrain(new_height, MINIMUM_SAFETY_ALTITUDE, FOLLOW_HEIGHT_MAX);
 	}
 
-	// Only apply Follow Angle adjustment if orbit angle setpoint and current orbit angle are within 1 second window
-	if(fabsf(_measured_orbit_angle - _orbit_angle_setpoint) < FOLLOW_ANGLE_USER_ADJUST_SPEED) {
-		// Roll for changing follow angle. When user commands +Roll (right), angle increases (clockwise)
+	// Only apply Follow distance adjustment if distance setting and current distance are within time window
+	if(fabsf(_drone_to_target_vector.length() - _follow_target_distance) < FOLLOW_DISTANCE_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
+		// RC Pitch stick input for changing distance
+		const float distance_change_speed = FOLLOW_DISTANCE_USER_ADJUST_SPEED * _sticks.getPitch();
+		const float new_distance = _follow_target_distance + distance_change_speed * _deltatime;
+		_follow_target_distance = constrain(new_distance, MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL, FOLLOW_DISTANCE_MAX);
+	}
+
+	// Only apply Follow Angle adjustment if orbit angle setpoint and current orbit angle are within time window
+	// Wrap orbit angle difference, to get the shortest angle between them
+	if(fabsf(matrix::wrap_pi(_measured_orbit_angle - _orbit_angle_setpoint)) < FOLLOW_ANGLE_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
+		// RC Roll stick input for changing follow angle. When user commands RC stick input: +Roll (right), angle increases (clockwise)
 		// Constrain adjust speed [rad/s], so that drone can actually catch up. Otherwise, the follow angle
-		// command can be too ahead that it won't end up being responsive to the user.
-		float angle_adjust_speed_max = min(FOLLOW_ANGLE_USER_ADJUST_SPEED, MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance);
-		float angle_change_speed = angle_adjust_speed_max * _sticks.getRoll();
-		float new_angle = _follow_angle_rad + angle_change_speed * _deltatime;
+		// command can be too ahead that it won't end up being responsive to RC stick inputs.
+		const float angle_adjust_speed_max = min(FOLLOW_ANGLE_USER_ADJUST_SPEED, MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance);
+		const float angle_change_speed = angle_adjust_speed_max * _sticks.getRoll();
+		const float new_angle = _follow_angle_rad + angle_change_speed * _deltatime;
 		_follow_angle_rad = matrix::wrap_pi(new_angle);
-	}
-
-	// Only apply Follow distance adjustment if distance setting and current distance are within 1 second window
-	if(fabsf(_drone_to_target_vector.length() - _follow_target_distance) < FOLLOW_DISTANCE_USER_ADJUST_SPEED) {
-		// Pitch for changing distance
-		float distance_change_speed = FOLLOW_DISTANCE_USER_ADJUST_SPEED * _sticks.getPitch();
-		float new_distance = _follow_target_distance + distance_change_speed * _deltatime;
-		_follow_target_distance = constrain(new_distance, MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL, 50.f);
 	}
 }
 
-float FlightTaskAutoFollowTarget::update_target_orientation(Vector2f target_velocity) {
-
+void FlightTaskAutoFollowTarget::update_target_orientation(const Vector2f &target_velocity, float &current_target_orientation)
+{
 	const float target_velocity_norm = target_velocity.norm(); // Get 2D projected target speed [m/s]
 
 	// Depending on the target velocity, freeze or set new target orientatino value
 	if(target_velocity_norm >= TARGET_VELOCITY_DEADZONE_FOR_ORIENTATION_TRACKING) {
-		_target_orientation_rad = atan2f(target_velocity(1), target_velocity(0));
+		current_target_orientation = atan2f(target_velocity(1), target_velocity(0));
 	}
-	else {
-		_target_orientation_rad = _target_orientation_rad;
-	}
-	return _target_orientation_rad;
 }
 
-float FlightTaskAutoFollowTarget::update_orbit_angle(float target_orientation, float follow_angle) {
+float FlightTaskAutoFollowTarget::update_orbit_angle(const float target_orientation, const float follow_angle, const float orbit_angle_setpoint, Vector2f &orbit_tangential_velocity)
+{
 	// Raw target orbit (setpoint) angle
 	const float raw_target_orbit_angle = matrix::wrap_pi(target_orientation + follow_angle);
 
 	// Calculate orbit angle error & it's direction
-	const float orbit_angle_error = matrix::wrap_pi(raw_target_orbit_angle - _orbit_angle_setpoint);
+	const float orbit_angle_error = matrix::wrap_pi(raw_target_orbit_angle - orbit_angle_setpoint);
 	const float orbit_angle_error_sign = matrix::sign(orbit_angle_error);
 
 	// Calculate maximum orbital velocity vector perpendicular to current orbit angle setpoint
-	const Vector2f orbital_max_velocity_vector = Vector2f(-sin(_orbit_angle_setpoint), cos(_orbit_angle_setpoint)) * orbit_angle_error_sign * MAXIMUM_TANGENTIAL_ORBITING_SPEED;
+	const Vector2f orbital_max_velocity_vector = Vector2f(-sinf(orbit_angle_setpoint), cosf(orbit_angle_setpoint)) * orbit_angle_error_sign * MAXIMUM_TANGENTIAL_ORBITING_SPEED;
 
-	// Calculate maximum orbital angle step we can take for this iteration
-	float max_orbital_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance;
+	// Calculate maximum orbit angle rate
+	const float max_orbital_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance;
 
 	// Calculate maximum orbital angle step we can take [rad]
 	const float max_orbital_step = max_orbital_rate * _deltatime;
 
 	if(fabsf(orbit_angle_error) < max_orbital_step) {
 		const float orbital_velocity_ratio = fabsf(orbit_angle_error) / max_orbital_step; // Current orbital step / Max orbital step, for velocity calculation
-		_orbit_tangential_velocity = orbital_max_velocity_vector * orbital_velocity_ratio;
+		orbit_tangential_velocity = orbital_max_velocity_vector * orbital_velocity_ratio;
 		return raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
 	}
 	else {
-		_orbit_tangential_velocity = orbital_max_velocity_vector;
-		return matrix::wrap_pi(_orbit_angle_setpoint + orbit_angle_error_sign * max_orbital_step); // Take a step
+		orbit_tangential_velocity = orbital_max_velocity_vector;
+		return matrix::wrap_pi(orbit_angle_setpoint + orbit_angle_error_sign * max_orbital_step); // Take a step
 	}
 }
 
-Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(Vector3f target_position)
+Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint)
 {
 	Vector3f drone_desired_position{NAN, NAN, NAN};
 
@@ -205,7 +198,7 @@ Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(Vector3f t
 	const float desired_distance_to_target = _follow_target_distance;
 
 	// Offset from the Target
-	Vector2f offset_vector = Vector2f(cos(_orbit_angle_setpoint), sin(_orbit_angle_setpoint)) * desired_distance_to_target;
+	Vector2f offset_vector = Vector2f(cosf(orbit_angle_setpoint), sinf(orbit_angle_setpoint)) * desired_distance_to_target;
 
 	// Calculate desired 2D position
 	drone_desired_position.xy() = Vector2f(target_position.xy()) + offset_vector;
@@ -238,7 +231,8 @@ Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(Vector3f t
 }
 
 
-float FlightTaskAutoFollowTarget::calculate_gimbal_height(float target_height) {
+float FlightTaskAutoFollowTarget::calculate_gimbal_height(float target_height)
+{
 	float gimbal_height{0.0f};
 
 	switch (_param_nav_ft_alt_m.get()) {
@@ -291,8 +285,11 @@ bool FlightTaskAutoFollowTarget::update()
 		// Calculate target orientation to track [rad]
 		_target_orientation_rad = update_target_orientation(target_velocity_filtered.xy());
 
+		// Orbital tangential velocity setpoint calculated from orbit angle calculation
+		Vector2f orbit_tangential_velocity{0.0f, 0.0f};
+
 		// Update the new orbit angle (rate constrained)
-		_orbit_angle_setpoint = update_orbit_angle(_target_orientation_rad, _follow_angle_rad);
+		_orbit_angle_setpoint = update_orbit_angle(_target_orientation_rad, _follow_angle_rad, orbit_tangential_velocity);
 
 		// Calculate desired position by applying orbit angle around the target
 		Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered);
@@ -301,7 +298,7 @@ bool FlightTaskAutoFollowTarget::update()
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
-				Vector3f orbit_tangential_velocity_3d = Vector3f(_orbit_tangential_velocity(0), _orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
+				Vector3f orbit_tangential_velocity_3d = Vector3f(orbit_tangential_velocity(0), orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
 				_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
 				_position_setpoint = drone_desired_position;
 
