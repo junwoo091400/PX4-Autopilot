@@ -54,8 +54,8 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 				    vehicle_status_flags_s &status_flags, bool report_failures, const bool prearm,
 				    const hrt_abstime &time_since_boot)
 {
-	report_failures = (report_failures && status_flags.condition_system_hotplug_timeout
-			   && !status_flags.condition_calibration_enabled);
+	report_failures = (report_failures && status_flags.system_hotplug_timeout
+			   && !status_flags.calibration_enabled);
 
 	bool failed = false;
 
@@ -174,7 +174,7 @@ bool PreFlightCheck::preflightCheck(orb_advert_t *mavlink_log_pub, vehicle_statu
 	}
 
 	/* ---- SYSTEM POWER ---- */
-	if (status_flags.condition_power_input_valid && !status_flags.circuit_breaker_engaged_power_check) {
+	if (status_flags.power_input_valid && !status_flags.circuit_breaker_engaged_power_check) {
 		if (!powerCheck(mavlink_log_pub, status, report_failures, prearm)) {
 			failed = true;
 		}
