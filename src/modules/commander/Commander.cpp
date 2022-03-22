@@ -931,7 +931,6 @@ Commander::handle_command(const vehicle_command_s &cmd)
 			}
 
 			if (desired_main_state != commander_state_s::MAIN_STATE_MAX) {
-				reset_posvel_validity();
 				main_ret = main_state_transition(_status, desired_main_state, _status_flags, _internal_state);
 			}
 
@@ -2141,13 +2140,6 @@ Commander::run()
 					events::send(events::ID("commander_takeoff_detected"), events::Log::Info, "Takeoff detected");
 					_status.takeoff_time = hrt_absolute_time();
 					_have_taken_off_since_arming = true;
-
-					// Set all position and velocity test probation durations to takeoff value
-					// This is a larger value to give the vehicle time to complete a failsafe landing
-					// if faulty sensors cause loss of navigation shortly after takeoff.
-					_gpos_probation_time_us = _param_com_pos_fs_prob.get() * 1_s;
-					_lpos_probation_time_us = _param_com_pos_fs_prob.get() * 1_s;
-					_lvel_probation_time_us = _param_com_pos_fs_prob.get() * 1_s;
 				}
 
 				// automatically set or update home position
@@ -3263,46 +3255,21 @@ Commander::control_status_leds(bool changed, const uint8_t battery_warning)
 	_leds_counter++;
 }
 
-void
-Commander::reset_posvel_validity()
-{
-	// reset all the check probation times back to the minimum value
-	_gpos_probation_time_us = POSVEL_PROBATION_MIN;
-	_lpos_probation_time_us = POSVEL_PROBATION_MIN;
-	_lvel_probation_time_us = POSVEL_PROBATION_MIN;
-
-	// recheck validity
-	UpdateEstimateValidity();
-}
-
-bool
-Commander::check_posvel_validity(const bool data_valid, const float data_accuracy, const float required_accuracy,
-				 const hrt_abstime &data_timestamp_us, hrt_abstime *last_fail_time_us, hrt_abstime *probation_time_us,
-				 const bool was_valid)
+bool Commander::check_posvel_validity(const bool data_valid, const float data_accuracy, const float required_accuracy,
+				      const hrt_abstime &data_timestamp_us, hrt_abstime *last_fail_time_us,
+				      const bool was_valid)
 {
 	bool valid = was_valid;
-
-	// constrain probation times
-	if (_vehicle_land_detected.landed) {
-		*probation_time_us = POSVEL_PROBATION_MIN;
-	}
-
 	const bool data_stale = ((hrt_elapsed_time(&data_timestamp_us) > _param_com_pos_fs_delay.get() * 1_s)
 				 || (data_timestamp_us == 0));
 	const float req_accuracy = (was_valid ? required_accuracy * 2.5f : required_accuracy);
-
 	const bool level_check_pass = data_valid && !data_stale && (data_accuracy < req_accuracy);
 
 	// Check accuracy with hysteresis in both test level and time
 	if (level_check_pass) {
-		if (was_valid) {
-			// still valid, continue to decrease probation time
-			const int64_t probation_time_new = *probation_time_us - hrt_elapsed_time(last_fail_time_us);
-			*probation_time_us = math::constrain(probation_time_new, POSVEL_PROBATION_MIN, POSVEL_PROBATION_MAX);
-
-		} else {
+		if (!was_valid) {
 			// check if probation period has elapsed
-			if (hrt_elapsed_time(last_fail_time_us) > *probation_time_us) {
+			if (hrt_elapsed_time(last_fail_time_us) > 1_s) {
 				valid = true;
 			}
 		}
@@ -3312,12 +3279,6 @@ Commander::check_posvel_validity(const bool data_valid, const float data_accurac
 		if (was_valid) {
 			// FAILURE! no longer valid
 			valid = false;
-
-		} else {
-			// failed again, increase probation time
-			const int64_t probation_time_new = *probation_time_us + hrt_elapsed_time(last_fail_time_us) *
-							   _param_com_pos_fs_gain.get();
-			*probation_time_us = math::constrain(probation_time_new, POSVEL_PROBATION_MIN, POSVEL_PROBATION_MAX);
 		}
 
 		*last_fail_time_us = hrt_absolute_time();
@@ -4209,15 +4170,15 @@ void Commander::UpdateEstimateValidity()
 
 	_status_flags.global_position_valid =
 		check_posvel_validity(lpos.xy_valid && !_nav_test_failed, gpos.eph, _param_com_pos_fs_eph.get(), gpos.timestamp,
-				      &_last_gpos_fail_time_us, &_gpos_probation_time_us, _status_flags.global_position_valid);
+				      &_last_gpos_fail_time_us, _status_flags.global_position_valid);
 
 	_status_flags.local_position_valid =
 		check_posvel_validity(lpos.xy_valid && !_nav_test_failed, lpos.eph, lpos_eph_threshold_adj, lpos.timestamp,
-				      &_last_lpos_fail_time_us, &_lpos_probation_time_us, _status_flags.local_position_valid);
+				      &_last_lpos_fail_time_us, _status_flags.local_position_valid);
 
 	_status_flags.local_velocity_valid =
 		check_posvel_validity(lpos.v_xy_valid && !_nav_test_failed, lpos.evh, _param_com_vel_fs_evh.get(), lpos.timestamp,
-				      &_last_lvel_fail_time_us, &_lvel_probation_time_us, _status_flags.local_velocity_valid);
+				      &_last_lvel_fail_time_us, _status_flags.local_velocity_valid);
 }
 
 void
