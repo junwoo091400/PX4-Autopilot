@@ -43,6 +43,7 @@
 #include "FlightTaskAutoFollowTarget.hpp"
 #include <mathlib/mathlib.h>
 #include <lib/matrix/matrix/math.hpp>
+#include <float.h>
 
 using matrix::Vector2f;
 using matrix::Vector3f;
@@ -79,9 +80,9 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	_yaw_setpoint_filter.reset(NAN);
 
 	// Update the internally tracked Follow Target characteristics
-	_follow_angle_rad = math::radians(get_follow_me_angle_setting((FollowPerspective)_param_nav_ft_fs.get()));
-	_follow_target_distance = _param_nav_ft_dst.get();
-	_follow_target_height = _param_nav_ft_ht.get();
+	_follow_angle_rad = math::radians(get_follow_angle_setting_deg((FollowPerspective)_param_nav_ft_fs.get()));
+	_follow_distance = _param_nav_ft_dst.get();
+	_follow_height = _param_nav_ft_ht.get();
 
 	// Save the home position z value to enable relative altitude setpoints to arming position (home) altitude
 	if (_sub_home_position.get().valid_alt) {
@@ -89,6 +90,27 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	}
 
 	return ret;
+}
+
+void FlightTaskAutoFollowTarget::updateParams() {
+	// Copy previous param values to check if it changes after param update
+	const float follow_distance_prev = _param_nav_ft_dst.get();
+	const float follow_height_prev = _param_nav_ft_ht.get();
+	const int follow_side_prev = _param_nav_ft_fs.get();
+
+	// Call updateParams in parent class to update parameters from child up until ModuleParam base class
+	FlightTask::updateParams();
+
+	// Compare param values and if they have changed, update the properties
+	if (fabsf(follow_distance_prev - _param_nav_ft_dst.get()) > FLT_EPSILON) {
+		_follow_distance = _param_nav_ft_dst.get();
+	}
+	if (fabsf(follow_height_prev - _param_nav_ft_ht.get()) > FLT_EPSILON) {
+		_follow_height = _param_nav_ft_ht.get();
+	}
+	if (follow_side_prev != _param_nav_ft_fs.get()) {
+		_follow_angle_rad = math::radians(get_follow_angle_setting_deg((FollowPerspective)_param_nav_ft_fs.get()));
+	}
 }
 
 void FlightTaskAutoFollowTarget::update_target_pose_filter(const follow_target_estimator_s &follow_target_estimator) {
@@ -112,42 +134,37 @@ void FlightTaskAutoFollowTarget::update_target_pose_filter(const follow_target_e
 	}
 }
 
-void FlightTaskAutoFollowTarget::update_stick_command(const Vector2f &drone_to_target_vector, const float measured_orbit_angle, const float tracked_orbit_angle_setpoint)
-{
-	// Update the sticks object to fetch recent data
-	_sticks.checkAndUpdateStickInputs();
-
-	// If no valid stick input is available, don't process any command
-	if(!_sticks.isAvailable()) {
-		return;
-	}
-
+void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_height(float &follow_height) {
 	// Only apply Follow height adjustment if height setpoint and current height are within time window
 	if(fabsf(_position_setpoint(2) - _position(2)) < FOLLOW_HEIGHT_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
 		// RC Throttle stick input for changing follow height
 		const float height_change_speed = FOLLOW_HEIGHT_USER_ADJUST_SPEED * _sticks.getThrottle();
-		const float new_height = _follow_target_height + height_change_speed * _deltatime;
-		_follow_target_height = constrain(new_height, MINIMUM_SAFETY_ALTITUDE, FOLLOW_HEIGHT_MAX);
+		const float new_height = _follow_height + height_change_speed * _deltatime;
+		follow_height = constrain(new_height, MINIMUM_SAFETY_ALTITUDE, FOLLOW_HEIGHT_MAX);
 	}
+}
 
+void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_distance(float &follow_distance, const Vector2f &drone_to_target_vector) {
 	// Only apply Follow distance adjustment if distance setting and current distance are within time window
-	if(fabsf(drone_to_target_vector.length() - _follow_target_distance) < FOLLOW_DISTANCE_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
+	if(fabsf(drone_to_target_vector.length() - _follow_distance) < FOLLOW_DISTANCE_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
 		// RC Pitch stick input for changing distance
 		const float distance_change_speed = FOLLOW_DISTANCE_USER_ADJUST_SPEED * _sticks.getPitch();
-		const float new_distance = _follow_target_distance + distance_change_speed * _deltatime;
-		_follow_target_distance = constrain(new_distance, MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL, FOLLOW_DISTANCE_MAX);
+		const float new_distance = _follow_distance + distance_change_speed * _deltatime;
+		follow_distance = constrain(new_distance, MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL, FOLLOW_DISTANCE_MAX);
 	}
+}
 
+void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_angle(float &follow_angle, const float measured_orbit_angle, const float tracked_orbit_angle_setpoint) {
 	// Only apply Follow Angle adjustment if orbit angle setpoint and current orbit angle are within time window
 	// Wrap orbit angle difference, to get the shortest angle between them
 	if(fabsf(matrix::wrap_pi(measured_orbit_angle - tracked_orbit_angle_setpoint)) < FOLLOW_ANGLE_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
 		// RC Roll stick input for changing follow angle. When user commands RC stick input: +Roll (right), angle increases (clockwise)
 		// Constrain adjust speed [rad/s], so that drone can actually catch up. Otherwise, the follow angle
 		// command can be too ahead that it won't end up being responsive to RC stick inputs.
-		const float angle_adjust_speed_max = min(FOLLOW_ANGLE_USER_ADJUST_SPEED, MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance);
+		const float angle_adjust_speed_max = min(FOLLOW_ANGLE_USER_ADJUST_SPEED, MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_distance);
 		const float angle_change_speed = angle_adjust_speed_max * _sticks.getRoll();
 		const float new_angle = _follow_angle_rad + angle_change_speed * _deltatime;
-		_follow_angle_rad = matrix::wrap_pi(new_angle);
+		follow_angle = matrix::wrap_pi(new_angle);
 	}
 }
 
@@ -174,7 +191,7 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(const float target_orientat
 	const Vector2f orbital_max_velocity_vector = Vector2f(-sinf(previous_orbit_angle_setpoint), cosf(previous_orbit_angle_setpoint)) * orbit_angle_error_sign * MAXIMUM_TANGENTIAL_ORBITING_SPEED;
 
 	// Calculate maximum orbit angle rate
-	const float max_orbital_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_target_distance;
+	const float max_orbital_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_distance;
 
 	// Calculate maximum orbital angle step we can take [rad]
 	const float max_orbital_step = max_orbital_rate * _deltatime;
@@ -280,8 +297,14 @@ bool FlightTaskAutoFollowTarget::update()
 		// Actual orbit angle measured around the target, which is pointing from target to drone, so M_PI_F difference.
 		const float measured_orbit_angle = matrix::wrap_pi(drone_to_target_heading + M_PI_F);
 
-		// Update follow distance, angle and height via RC commands
-		update_stick_command(drone_to_target_vector, measured_orbit_angle, _tracked_orbit_angle_setpoint_rad);
+		// Update the sticks object to fetch recent data
+		_sticks.checkAndUpdateStickInputs();
+		// If valid stick input is available, update follow distance, angle and height via RC commands
+		if(_sticks.isAvailable()) {
+			update_rc_adjusted_follow_height(_follow_height);
+			update_rc_adjusted_follow_distance(_follow_distance, drone_to_target_vector);
+			update_rc_adjusted_follow_angle(_follow_angle_rad, measured_orbit_angle, _tracked_orbit_angle_setpoint_rad);
+		}
 
 		// Update target orientation to track
 		update_target_orientation(target_velocity_filtered.xy(), _tracked_target_orientation_rad);
@@ -293,7 +316,7 @@ bool FlightTaskAutoFollowTarget::update()
 		_tracked_orbit_angle_setpoint_rad = update_orbit_angle(_tracked_target_orientation_rad, _follow_angle_rad, _tracked_orbit_angle_setpoint_rad, orbit_tangential_velocity);
 
 		// Calculate desired position by applying orbit angle around the target
-		Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _tracked_orbit_angle_setpoint_rad, _follow_target_distance, _position(2), _dist_to_ground, (FollowAltitudeMode)_param_nav_ft_alt_m.get(), _follow_target_height);
+		Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _tracked_orbit_angle_setpoint_rad, _follow_distance, _position(2), _dist_to_ground, (FollowAltitudeMode)_param_nav_ft_alt_m.get(), _follow_height);
 
 		if (PX4_ISFINITE(drone_desired_position(0)) && PX4_ISFINITE(drone_desired_position(1))
 		    && PX4_ISFINITE(drone_desired_position(2))) {
@@ -329,29 +352,22 @@ bool FlightTaskAutoFollowTarget::update()
 
 		// Update Yaw setpoint if we're far enough for yaw control
 		if (drone_to_target_vector.longerThan(MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL)) {
-			// Check if yaw setpoint filtering is enabled
-			if (YAW_SETPOINT_FILTER_ENABLE) {
-				// If the filter hasn't been initialized yet, reset the state to raw heading value
-				if (!PX4_ISFINITE(_yaw_setpoint_filter.getState())) {
-					_yaw_setpoint_filter.reset(drone_to_target_heading);
-				}
-
-				// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
-				// +M_PI, the filter can just average them out and give wrong output.
-				const float yaw_setpoint_raw_unwrapped = matrix::unwrap_pi(_yaw_setpoint_filter.getState(), drone_to_target_heading);
-
-				// Set the parameters for the filter to take update time interval into account
-				_yaw_setpoint_filter.setParameters(_deltatime, _param_ft_yaw_t.get());
-				_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
-
-				// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
-				_yaw_setpoint_filter.reset(matrix::wrap_pi(_yaw_setpoint_filter.getState()));
-				_yaw_setpoint = _yaw_setpoint_filter.getState();
+			// If the filter hasn't been initialized yet, reset the state to raw heading value
+			if (!PX4_ISFINITE(_yaw_setpoint_filter.getState())) {
+				_yaw_setpoint_filter.reset(drone_to_target_heading);
 			}
-			else {
-				// Yaw setpoint filtering disabled, set raw yaw setpoint
-				_yaw_setpoint = drone_to_target_heading;
-			}
+
+			// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
+			// +M_PI, the filter can just average them out and give wrong output.
+			const float yaw_setpoint_raw_unwrapped = matrix::unwrap_pi(_yaw_setpoint_filter.getState(), drone_to_target_heading);
+
+			// Set the parameters for the filter to take update time interval into account
+			_yaw_setpoint_filter.setParameters(_deltatime, _param_ft_yaw_t.get());
+			_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
+
+			// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
+			_yaw_setpoint_filter.reset(matrix::wrap_pi(_yaw_setpoint_filter.getState()));
+			_yaw_setpoint = _yaw_setpoint_filter.getState();
 		}
 		// Gimbal setpoint
 		const float gimbal_height = calculate_gimbal_height(target_position_filtered(2), (FollowAltitudeMode)_param_nav_ft_alt_m.get(), _position(2), _dist_to_ground, _home_position_z);
@@ -380,7 +396,7 @@ bool FlightTaskAutoFollowTarget::update()
 	return true;
 }
 
-float FlightTaskAutoFollowTarget::get_follow_me_angle_setting(const FollowPerspective follow_perspective) const
+float FlightTaskAutoFollowTarget::get_follow_angle_setting_deg(const FollowPerspective follow_perspective) const
 {
 	switch (follow_perspective) {
 	case FOLLOW_PERSPECTIVE_BEHIND:

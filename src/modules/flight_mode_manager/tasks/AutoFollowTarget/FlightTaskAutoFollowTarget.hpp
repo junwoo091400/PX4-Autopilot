@@ -62,13 +62,13 @@
 // underneath which the flight task will stop moving horizontally
 static constexpr float MINIMUM_SAFETY_ALTITUDE = 1.0f;
 
-// [m] max vertical deviation from position setpoint, above
-// which no horizontal control is done
-static constexpr float ALT_ACCEPTANCE_THRESHOLD = 3.0f;
-
 // [m/s] Vertical ascent speed when the drone detects that it is too close
 // to the ground (below MINIMUM_SAFETY_ALTITUDE).
 static constexpr float EMERGENCY_ASCENT_SPEED = 0.5f;
+
+// [m] max vertical deviation from position setpoint, above
+// which no horizontal control is done
+static constexpr float ALT_ACCEPTANCE_THRESHOLD = 3.0f;
 
 // [m] Minimum distance between drone and target for the drone to do any yaw control.
 static constexpr float MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL = 1.0f;
@@ -90,9 +90,6 @@ static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
 // [s] Yaw setpoint filter to avoid jitter-ness, which can happen because the yaw is
 // calculated off of position offset between target & drone, which updates very frequently.
 static constexpr float YAW_SETPOINT_FILTER_TIME_CONSTANT = 0.1;
-
-// Yaw setpoint enabler varaible to keep the yaw filtering scheme
-static constexpr bool YAW_SETPOINT_FILTER_ENABLE = true;
 
 // [m/s] Speed with which the follow distance will be adjusted by when commanded with deflection via RC command
 static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 1.5;
@@ -122,6 +119,9 @@ public:
 
 	bool activate(const vehicle_local_position_setpoint_s &last_setpoint) override;
 	bool update() override;
+
+	// Override parameter update function to check when Follow Target properties are changed
+	void updateParams() override;
 
 protected:
 	// Follow Perspectives set by the parameter NAV_FT_FS
@@ -161,9 +161,36 @@ protected:
 	};
 
 	/**
-	 * Get the RC command from the user to adjust Follow Angle, Distance and Height internally
+	 * Update the Follow height based on RC commands
+	 *
+	 * If the drone is within the an user adjustment error time window away from the height setpoint,
+	 * follow_height will be adjusted with a speed proportional to user RC command
+	 *
+	 * @param follow_height Tracked follow height variable reference which will be updated to the new value
 	 */
-	void update_stick_command(const Vector2f &drone_to_target_vector, const float measured_orbit_angle, const float tracked_orbit_angle_setpoint);
+	void update_rc_adjusted_follow_height(float &follow_height);
+
+	/**
+	 * Update the Follow distance based on RC commands
+	 *
+	 * If the drone is within the an user adjustment error time window away from the distance setpoint,
+	 * follow_distance will be adjusted with a speed proportional to user RC command
+	 *
+	 * @param follow_distance Tracked follow distance variable reference which will be updated to the new value
+	 */
+	void update_rc_adjusted_follow_distance(float &follow_distance, const Vector2f &drone_to_target_vector);
+
+	/**
+	 * Update the Follow angle based on RC commands
+	 *
+	 * If the drone's orbit angle in relation to target is within the an user adjustment error time window
+	 * away from the orbit angle setpoint, follow_angle will be adjusted with a speed proportional to user RC command
+	 *
+	 * @param follow_angle Tracked follow angle variable reference which will be updated to the new value
+	 * @param measured_angle Measured current drone's orbit angle around the target (depends on tracked target orientation for reference)
+	 * @param tracked_orbit_angle_setpoint Rate constrained orbit angle setpoint value from last command
+	 */
+	void update_rc_adjusted_follow_angle(float &follow_angle, const float measured_orbit_angle, const float tracked_orbit_angle_setpoint);
 
 	/**
 	 * Update the Second Order Target Pose Filter to track kinematically feasible target position and velocity
@@ -228,12 +255,12 @@ protected:
 	float point_gimbal_at(const float xy_distance, const float z_distance);
 
 	/**
-	 * Get the current follow-me perspective setting from PX4 parameters
+	 * Get the current follow-me perspective angle setting from PX4 parameters
 	 *
 	 * @param follow_perspective value of the parameter NAV_FT_FS
 	 * @return Angle [deg] from which the drone should view the target while following it, with zero degrees indicating the target's 12 o'clock
 	 */
-	float get_follow_me_angle_setting(const FollowPerspective follow_perspective) const;
+	float get_follow_angle_setting_deg(const FollowPerspective follow_perspective) const;
 
 	// Sticks object to read in stick commands from the user
 	Sticks _sticks;
@@ -249,8 +276,8 @@ protected:
 	SecondOrderReferenceModel<matrix::Vector3f> _target_pose_filter;
 
 	// Internally tracked Follow Target characteristics, to allow RC control input adjustments
-	float _follow_target_distance{8.0f}; // [m]
-	float _follow_target_height{0.0f}; // [m]
+	float _follow_distance{8.0f}; // [m]
+	float _follow_height{0.0f}; // [m]
 	float _follow_angle_rad{0.0f}; // [rad]
 
 	// Tracked estimate of target orientation
