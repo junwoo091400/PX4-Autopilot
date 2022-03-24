@@ -146,6 +146,10 @@ void set_offboard_loss_nav_state(vehicle_status_s &status, actuator_armed_s &arm
 				 const vehicle_status_flags_s &status_flags,
 				 const offboard_loss_actions_t offboard_loss_act);
 
+void set_quadchute_nav_state(vehicle_status_s &status, actuator_armed_s &armed,
+			     const vehicle_status_flags_s &status_flags,
+			     const quadchute_actions_t quadchute_act);
+
 void set_offboard_loss_rc_nav_state(vehicle_status_s &status, actuator_armed_s &armed,
 				    const vehicle_status_flags_s &status_flags,
 				    const offboard_loss_rc_actions_t offboard_loss_rc_act);
@@ -496,6 +500,7 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 		   orb_advert_t *mavlink_log_pub, const link_loss_actions_t data_link_loss_act, const bool mission_finished,
 		   const bool stay_in_failsafe, const vehicle_status_flags_s &status_flags, bool landed,
 		   const link_loss_actions_t rc_loss_act, const offboard_loss_actions_t offb_loss_act,
+		   const quadchute_actions_t quadchute_act,
 		   const offboard_loss_rc_actions_t offb_loss_rc_act,
 		   const position_nav_loss_actions_t posctl_nav_loss_act,
 		   const float param_com_rcl_act_t, const int param_com_rcl_except,
@@ -599,7 +604,8 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 						   gps_fail_openloop_loiter_time_s)) {
 			// nothing to do - everything done in check_invalid_pos_nav_state
 		} else if (status_flags.vtol_transition_failure) {
-			status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+
+			set_quadchute_nav_state(status, armed, status_flags, quadchute_act);
 
 		} else if (status.mission_failure) {
 			status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
@@ -650,7 +656,8 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 			// nothing to do - everything done in check_invalid_pos_nav_state
 
 		} else if (status_flags.vtol_transition_failure) {
-			status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+
+			set_quadchute_nav_state(status, armed, status_flags, quadchute_act);
 
 		} else if (status.data_link_lost && data_link_loss_act_configured && !landed && is_armed) {
 			// Data link lost, data link loss reaction configured -> do configured reaction
@@ -785,7 +792,7 @@ bool set_nav_state(vehicle_status_s &status, actuator_armed_s &armed, commander_
 				// nothing to do - everything done in check_invalid_pos_nav_state
 
 			} else if (status_flags.vtol_transition_failure) {
-				status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+				set_quadchute_nav_state(status, armed, status_flags, quadchute_act);
 
 			} else if (status.data_link_lost && data_link_loss_act_configured && !landed && is_armed && !deny_link_failsafe) {
 				// Data link lost, data link loss reaction configured -> do configured reaction
@@ -1025,6 +1032,41 @@ void reset_link_loss_globals(actuator_armed_s &armed, const bool old_failsafe, c
 		} else if (link_loss_act == link_loss_actions_t::LOCKDOWN) {
 			armed.lockdown = false;
 		}
+	}
+}
+
+void set_quadchute_nav_state(vehicle_status_s &status, actuator_armed_s &armed,
+			     const vehicle_status_flags_s &status_flags,
+			     const quadchute_actions_t quadchute_act)
+{
+	switch (quadchute_act) {
+	case quadchute_actions_t::NO_ACTION:
+		// If quadchute action is disabled then no action must be taken.
+		break;
+
+	default:
+	case quadchute_actions_t::AUTO_RTL:
+		if (status_flags.global_position_valid && status_flags.home_position_valid) {
+			status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_RTL;
+		}
+
+		break;
+
+	// FALLTHROUGH
+	case quadchute_actions_t::AUTO_LAND:
+		if (status_flags.global_position_valid) {
+			status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LAND;
+		}
+
+		break;
+
+	// FALLTHROUGH
+	case quadchute_actions_t::AUTO_LOITER:
+		if (status_flags.global_position_valid) {
+			status.nav_state = vehicle_status_s::NAVIGATION_STATE_AUTO_LOITER;
+		}
+
+		break;
 	}
 }
 
