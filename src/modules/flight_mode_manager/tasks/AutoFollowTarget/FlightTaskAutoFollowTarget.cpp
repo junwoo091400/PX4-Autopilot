@@ -187,24 +187,39 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(const float target_orientat
 	const float orbit_angle_error = matrix::wrap_pi(raw_target_orbit_angle - previous_orbit_angle_setpoint);
 	const float orbit_angle_error_sign = matrix::sign(orbit_angle_error);
 
-	// Calculate maximum orbital velocity vector perpendicular to current orbit angle setpoint
-	const Vector2f orbital_max_velocity_vector = Vector2f(-sinf(previous_orbit_angle_setpoint), cosf(previous_orbit_angle_setpoint)) * orbit_angle_error_sign * MAXIMUM_TANGENTIAL_ORBITING_SPEED;
-
 	// Calculate maximum orbit angle rate
 	const float max_orbital_rate = MAXIMUM_TANGENTIAL_ORBITING_SPEED / _follow_distance;
 
-	// Calculate maximum orbital angle step we can take [rad]
-	const float max_orbital_step = max_orbital_rate * _deltatime;
+	// Maximum orbital angle error from which point the drone should start decreasing tangential velocity setpoint
+	const float max_orbital_angle_error_threshold = max_orbital_rate * ORBIT_VELOCITY_WINDDOWN_TIME_WINDOW;
+	// Calculate maximum orbital angle step we can take until the next loop iteration
+	const float max_orbital_angle_step = max_orbital_rate * _deltatime;
 
-	if(fabsf(orbit_angle_error) < max_orbital_step) {
-		const float orbital_velocity_ratio = fabsf(orbit_angle_error) / max_orbital_step; // Current orbital step / Max orbital step, for velocity calculation
+	float next_orbital_angle_setpiont = previous_orbit_angle_setpoint;
+
+	if(fabsf(orbit_angle_error) < max_orbital_angle_step) {
+		// If we are within the single step distance away from the target, set the orbital angle setpoint directly to raw setpoint
+		next_orbital_angle_setpiont = raw_target_orbit_angle;
+	}
+	else {
+		// Otherwise, take a marginal step to set the new orbital angle setpoint
+		next_orbital_angle_setpiont = matrix::wrap_pi(previous_orbit_angle_setpoint + orbit_angle_error_sign * max_orbital_angle_step);
+	}
+
+	// Calculate maximum orbital velocity vector perpendicular to current orbit angle setpoint
+	const Vector2f orbital_max_velocity_vector = Vector2f(-sinf(next_orbital_angle_setpiont), cosf(next_orbital_angle_setpiont)) * orbit_angle_error_sign * MAXIMUM_TANGENTIAL_ORBITING_SPEED;
+
+	// If we are within the buffer zone for orbital angle error, set velocity setpoint magnitude proportional to the error
+	if(fabsf(orbit_angle_error) < max_orbital_angle_error_threshold) {
+		const float orbital_velocity_ratio = fabsf(orbit_angle_error) / max_orbital_angle_error_threshold; // Current orbital step / Max orbital step, for velocity calculation
 		orbit_tangential_velocity = orbital_max_velocity_vector * orbital_velocity_ratio;
-		return raw_target_orbit_angle; // Next orbital angle is feasible, set it directly
 	}
 	else {
 		orbit_tangential_velocity = orbital_max_velocity_vector;
-		return matrix::wrap_pi(previous_orbit_angle_setpoint + orbit_angle_error_sign * max_orbital_step); // Take a step
 	}
+
+	return next_orbital_angle_setpiont; // Next orbital angle is feasible, set it directly
+
 }
 
 Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint, const float follow_distance,
@@ -388,6 +403,7 @@ bool FlightTaskAutoFollowTarget::update()
 
 	follow_target_status.tracked_target_orientation = _tracked_target_orientation_rad;
 	follow_target_status.follow_angle = _follow_angle_rad;
+	follow_target_status.orbit_angle_setpoint = _tracked_orbit_angle_setpoint_rad; //debug
 
 	_follow_target_status_pub.publish(follow_target_status);
 

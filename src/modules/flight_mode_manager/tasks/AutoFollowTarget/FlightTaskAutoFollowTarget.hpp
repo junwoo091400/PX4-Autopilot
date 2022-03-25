@@ -87,6 +87,10 @@ static constexpr float TARGET_SPEED_DEADZONE_FOR_ORIENTATION_TRACKING = 1.0;
 // [m/s] Velocity limit to limit orbital angular rate depending on follow distance
 static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
 
+// [s] Time window for which orbital tangential speed setpoint will start decreasing proportional to
+// the orbit angle error, to have buffer zone to remove aggressive velocity setpoints
+static constexpr float ORBIT_VELOCITY_WINDDOWN_TIME_WINDOW = 1.0f;
+
 // [s] Yaw setpoint filter to avoid jitter-ness, which can happen because the yaw is
 // calculated off of position offset between target & drone, which updates very frequently.
 static constexpr float YAW_SETPOINT_FILTER_TIME_CONSTANT = 0.1;

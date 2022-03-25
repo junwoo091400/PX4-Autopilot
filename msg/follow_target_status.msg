@@ -8,3 +8,4 @@ float32 follow_angle               # [rad] Current follow angle setting ,which c
 
 bool emergency_ascent
 float32 gimbal_pitch
+float32 orbit_angle_setpoint
