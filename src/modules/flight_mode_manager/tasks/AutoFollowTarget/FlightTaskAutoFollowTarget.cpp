@@ -208,13 +208,12 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(Vector2f &orbit_tangential_
 
 }
 
-Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint, const float follow_distance,
-	 const float current_drone_pos_z, const float distance_to_ground, const FollowAltitudeMode follow_altitude_mode, const float follow_height)
+Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint)
 {
 	Vector3f drone_desired_position{NAN, NAN, NAN};
 
 	// Offset from the Target
-	Vector2f offset_vector = Vector2f(cosf(orbit_angle_setpoint), sinf(orbit_angle_setpoint)) * follow_distance;
+	Vector2f offset_vector = Vector2f(cosf(orbit_angle_setpoint), sinf(orbit_angle_setpoint)) * _follow_distance;
 
 	// Calculate desired 2D position
 	drone_desired_position.xy() = Vector2f(target_position.xy()) + offset_vector;
@@ -222,16 +221,16 @@ Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(const Vect
 	// Calculate ground's z value in local frame for terrain tracking mode.
 	// _dist_to_ground value takes care of distance sensor value if available, otherwise
 	// it uses home z value as reference
-	const float ground_z_estimate = current_drone_pos_z + distance_to_ground;
+	const float ground_z_estimate = _position(2) + _dist_to_ground;
 
 	// Z-position based off curent and initial target altitude
-	switch (follow_altitude_mode) {
+	switch (_param_nav_ft_alt_m.get()) {
 		case FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN:
-			drone_desired_position(2) = ground_z_estimate - follow_height;
+			drone_desired_position(2) = ground_z_estimate - _follow_height;
 			break;
 
 		case FOLLOW_ALTITUDE_MODE_TRACK_TARGET:
-			drone_desired_position(2) = target_position(2) - follow_height;
+			drone_desired_position(2) = target_position(2) - _follow_height;
 			break;
 
 		case FOLLOW_ALTITUDE_MODE_CONSTANT:
@@ -240,26 +239,26 @@ Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(const Vect
 
 		default:
 			// Calculate the desired Z position relative to the home position
-			drone_desired_position(2) = _home_position_z - follow_height;
+			drone_desired_position(2) = _home_position_z - _follow_height;
 	}
 
 	return drone_desired_position;
 }
 
 
-float FlightTaskAutoFollowTarget::calculate_gimbal_height(const float target_pos_z, const FollowAltitudeMode follow_altitude_mode, const float current_drone_pos_z, const float distance_to_ground, const float home_pos_z)
+float FlightTaskAutoFollowTarget::calculate_gimbal_height(const float target_pos_z)
 {
 	float gimbal_height{0.0f};
 
-	switch (follow_altitude_mode) {
+	switch (_param_nav_ft_alt_m.get()) {
 		case FOLLOW_ALTITUDE_MODE_TRACK_TERRAIN:
 			// Point the gimbal at the ground level in this tracking mode
-			gimbal_height = distance_to_ground;
+			gimbal_height = _dist_to_ground;
 			break;
 
 		case FOLLOW_ALTITUDE_MODE_TRACK_TARGET:
 			// Point the gimbal at the target's 3D coordinates
-			gimbal_height = -(current_drone_pos_z - target_pos_z);
+			gimbal_height = -(_position(2) - target_pos_z);
 			break;
 
 		case FOLLOW_ALTITUDE_MODE_CONSTANT:
@@ -267,7 +266,7 @@ float FlightTaskAutoFollowTarget::calculate_gimbal_height(const float target_pos
 		//FALLTHROUGH
 
 		default:
-			gimbal_height = home_pos_z - current_drone_pos_z; // Assume target is at home position's altitude
+			gimbal_height = _home_position_z - _position(2); // Assume target is at home position's altitude
 			break;
 	}
 
@@ -317,7 +316,7 @@ bool FlightTaskAutoFollowTarget::update()
 		_tracked_orbit_angle_setpoint_rad = update_orbit_angle(orbit_tangential_velocity, _tracked_target_orientation_rad, _tracked_orbit_angle_setpoint_rad);
 
 		// Calculate desired position by applying orbit angle around the target
-		Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _tracked_orbit_angle_setpoint_rad, _follow_distance, _position(2), _dist_to_ground, (FollowAltitudeMode)_param_nav_ft_alt_m.get(), _follow_height);
+		Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _tracked_orbit_angle_setpoint_rad);
 
 		if (PX4_ISFINITE(drone_desired_position(0)) && PX4_ISFINITE(drone_desired_position(1))
 		    && PX4_ISFINITE(drone_desired_position(2))) {
@@ -371,7 +370,7 @@ bool FlightTaskAutoFollowTarget::update()
 			_yaw_setpoint = _yaw_setpoint_filter.getState();
 		}
 		// Gimbal setpoint
-		const float gimbal_height = calculate_gimbal_height(target_position_filtered(2), (FollowAltitudeMode)_param_nav_ft_alt_m.get(), _position(2), _dist_to_ground, _home_position_z);
+		const float gimbal_height = calculate_gimbal_height(target_position_filtered(2));
 		const float gimbal_pitch = point_gimbal_at(drone_to_target_vector.norm(), gimbal_height);
 
 		follow_target_status.gimbal_pitch = gimbal_pitch; // Log gimbal pitch

@@ -209,10 +209,9 @@ protected:
 	 * Returns the orbit angle setpoint, taking into account the maximal orbit tangential speed.
 	 * While setting the orbital velocity setpoint vector for the according position setpoint
 	 *
-	 * @param target_orientation Tracked target orientation
-	 * @param follow_angle Follow angle setpoint
-	 * @param previous_orbit_angle_setpoint Previous orbit angle setpoint
 	 * @param orbit_tangential_velocity Where velocity setpoint at the position setpoint will be written to
+	 * @param target_orientation Tracked target orientation
+	 * @param previous_orbit_angle_setpoint Previous orbit angle setpoint
 	 *
 	 * @return Angle [rad] Next feasible orbit angle setpoint
 	 */
@@ -223,15 +222,10 @@ protected:
 	 *
 	 * @param target_position Tracked target position Vector3f reference
 	 * @param orbit_angle_setpoint Current orbit angle setpoint around the target
-	 * @param follow_distance Follow distance setting [m]
-	 * @param current_drone_pos_z Current drone's local position z value [m]
-	 * @param distance_to_ground Distance to ground from FlightTask [m]
-	 * @param follow_altitude_mode Follow Altitude mode
-	 * @param follow_height Follow height setting [m]
 	 *
 	 * @return Position [m,m,m] Final position setpoint for the drone
 	 */
-	Vector3f calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint, const float follow_distance, const float current_drone_pos_z, const float distance_to_ground, const FollowAltitudeMode follow_altitude_mode, const float follow_height);
+	Vector3f calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint);
 
 	/**
 	 * Calculate the gimbal height offset to the target to calculate the pitch angle command
@@ -240,7 +234,7 @@ protected:
 	 *
 	 * @return Height [m] Difference between the target and the drone
 	 */
-	float calculate_gimbal_height(const float target_pos_z, const FollowAltitudeMode follow_altitude_mode, const float current_drone_pos_z, const float distance_to_ground, const float home_pos_z);
+	float calculate_gimbal_height(const float target_pos_z);
 
 	/**
 	 * Publishes gimbal control command to track the target, given xy distance and z (height) difference
