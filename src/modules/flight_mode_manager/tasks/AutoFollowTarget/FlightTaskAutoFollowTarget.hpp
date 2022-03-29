@@ -108,6 +108,9 @@ static constexpr float FOLLOW_ANGLE_USER_ADJUST_SPEED = 1.5;
 // This is introduced to prevent setpoint adjustments becoming too diverged from the vehicle's actual position
 static constexpr float USER_ADJUSTMENT_ERROR_TIME_WINDOW = 0.5f;
 
+// Deadzone on both +/- direction for normalized stick input (-1, +1) where user adjustment will be ignored
+static constexpr float USER_ADJUSTMENT_DEADZONE = 0.05f;
+
 
 class FlightTaskAutoFollowTarget : public FlightTask
 {

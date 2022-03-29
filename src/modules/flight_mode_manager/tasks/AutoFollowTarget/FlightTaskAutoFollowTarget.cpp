@@ -142,6 +142,9 @@ void FlightTaskAutoFollowTarget::update_target_pose_filter(const follow_target_e
 }
 
 void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_height(float &follow_height) {
+	if (fabsf(_sticks.getThrottle()) < USER_ADJUSTMENT_DEADZONE) {
+		return;
+	}
 	// Only apply Follow height adjustment if height setpoint and current height are within time window
 	if(fabsf(_position_setpoint(2) - _position(2)) < FOLLOW_HEIGHT_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
 		// RC Throttle stick input for changing follow height
@@ -152,6 +155,9 @@ void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_height(float &follow_
 }
 
 void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_distance(float &follow_distance, const Vector2f &drone_to_target_vector) {
+	if (fabsf(_sticks.getPitch()) < USER_ADJUSTMENT_DEADZONE) {
+		return;
+	}
 	// Only apply Follow distance adjustment if distance setting and current distance are within time window
 	if(fabsf(drone_to_target_vector.length() - _follow_distance) < FOLLOW_DISTANCE_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
 		// RC Pitch stick input for changing distance
@@ -162,6 +168,9 @@ void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_distance(float &follo
 }
 
 void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_angle(float &follow_angle, const float measured_orbit_angle, const float tracked_orbit_angle_setpoint) {
+	if (fabsf(_sticks.getRoll()) < USER_ADJUSTMENT_DEADZONE) {
+		return;
+	}
 	// Only apply Follow Angle adjustment if orbit angle setpoint and current orbit angle are within time window
 	// Wrap orbit angle difference, to get the shortest angle between them
 	if(fabsf(matrix::wrap_pi(measured_orbit_angle - tracked_orbit_angle_setpoint)) < FOLLOW_ANGLE_USER_ADJUST_SPEED * USER_ADJUSTMENT_ERROR_TIME_WINDOW) {
