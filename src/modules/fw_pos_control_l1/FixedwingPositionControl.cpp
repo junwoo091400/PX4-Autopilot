@@ -315,7 +315,7 @@ FixedwingPositionControl::wind_poll()
 		_wind_vel(1) = wind.windspeed_east;
 
 	} else {
-		// invalidate wind estimate usage after subscription timeout
+		// invalidate wind estimate usage (and correspondingly NPFG, if enabled) after subscription timeout
 		_wind_valid = _wind_valid && (hrt_absolute_time() - _time_wind_last_received) < T_WIND_EST_TIMEOUT;
 	}
 }
