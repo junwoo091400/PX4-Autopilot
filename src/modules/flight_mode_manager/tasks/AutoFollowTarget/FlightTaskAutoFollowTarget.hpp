@@ -57,6 +57,7 @@
 #include <lib/mathlib/math/filter/second_order_reference_model.hpp>
 #include <lib/mathlib/math/filter/AlphaFilter.hpp>
 #include <lib/matrix/matrix/helper_functions.hpp>
+#include <motion_planning/VelocitySmoothing.hpp>
 
 // [m] Minimum safety altitude above home (or bottom distance sensor)
 // underneath which the flight task will stop moving horizontally
@@ -84,24 +85,17 @@ static constexpr uint64_t TARGET_ESTIMATOR_TIMEOUT_US = 1500000UL;
 // tracking will freeze, since orientation can be noisy in low velocities
 static constexpr float TARGET_SPEED_DEADZONE_FOR_ORIENTATION_TRACKING = 1.0;
 
-// [m/s] Velocity limit to limit orbital angular rate depending on follow distance
-static constexpr float MAXIMUM_TANGENTIAL_ORBITING_SPEED = 5.0;
-
-// [s] Time window for which orbital tangential speed setpoint will start decreasing proportional to
-// the orbit angle error, to have buffer zone to remove aggressive velocity setpoints
-static constexpr float ORBIT_VELOCITY_WINDDOWN_TIME_WINDOW = 1.0f;
-
 // [s] Yaw setpoint filter to avoid jitter-ness, which can happen because the yaw is
 // calculated off of position offset between target & drone, which updates very frequently.
 static constexpr float YAW_SETPOINT_FILTER_TIME_CONSTANT = 0.1;
 
 // [m/s] Speed with which the follow distance will be adjusted by when commanded with deflection via RC command
-static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 1.5;
+static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 2.0;
 // [m] Maximum follow distance that can be set by user's RC adjustment
 static constexpr float FOLLOW_DISTANCE_MAX = 100.f;
 
 // [m/s] Speed with which the follow height will be adjusted by when commanded with deflection via RC command
-static constexpr float FOLLOW_HEIGHT_USER_ADJUST_SPEED = 1.0;
+static constexpr float FOLLOW_HEIGHT_USER_ADJUST_SPEED = 1.5;
 // [m] Maximum follow height that can be set by user's RC adjustment
 static constexpr float FOLLOW_HEIGHT_MAX = 100.f;
 
@@ -222,7 +216,7 @@ protected:
 	 *
 	 * @return Angle [rad] Next feasible orbit angle setpoint
 	 */
-	float update_orbit_angle(const float target_orientation, const float follow_angle, const float previous_orbit_angle_setpoint, Vector2f &orbit_tangential_velocity);
+	float update_orbit_angle(Vector2f &orbit_tangential_velocity, const float target_orientation, const float previous_orbit_angle_setpoint);
 
 	/**
 	 * Calculates desired drone position taking into account orbit angle and the follow target altitude mode
@@ -286,9 +280,11 @@ protected:
 
 	// Tracked estimate of target orientation
 	float _tracked_target_orientation_rad{0.0f};
-
 	// Tracked orbit angle setpoint
 	float _tracked_orbit_angle_setpoint_rad{0.0f};
+
+	// Angular acceleration limited orbit angle setpoint curve trajectory generator
+	VelocitySmoothing _orbit_angle_traj_generator;
 
 	// Yaw setpoint filter to remove jitter-ness
 	AlphaFilter<float> _yaw_setpoint_filter;
@@ -302,7 +298,9 @@ protected:
 		(ParamFloat<px4::params::NAV_FT_DST>) _param_nav_ft_dst,
 		(ParamInt<px4::params::NAV_FT_FS>) _param_nav_ft_fs,
 		(ParamInt<px4::params::NAV_FT_ALT_M>) _param_nav_ft_alt_m,
-		(ParamFloat<px4::params::NAV_FT_YAW_T>) _param_ft_yaw_t
+		(ParamFloat<px4::params::NAV_FT_YAW_T>) _param_ft_yaw_t,
+		(ParamFloat<px4::params::MPC_ACC_HOR_MAX>) _param_mpc_acc_hor_max,
+		(ParamFloat<px4::params::MPC_XY_VEL_MAX>) _param_mpc_xy_vel_max
 	)
 
 	uORB::Subscription _follow_target_estimator_sub{ORB_ID(follow_target_estimator)};
