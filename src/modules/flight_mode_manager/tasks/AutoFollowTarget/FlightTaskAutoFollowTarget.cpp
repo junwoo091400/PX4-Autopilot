@@ -198,14 +198,14 @@ float FlightTaskAutoFollowTarget::update_orbit_angle(Vector2f &orbit_tangential_
 	_orbit_angle_traj_generator.updateDurations(unwrapped_target_orbit_angle);
 	_orbit_angle_traj_generator.updateTraj(_deltatime);
 
+	// Get the calculated angular rate and angle setpoint
 	const float angular_rate_setpoint = _orbit_angle_traj_generator.getCurrentAcceleration();
-	const float orbit_angle_setpoint = matrix::wrap_pi(_orbit_angle_traj_generator.getCurrentVelocity());
+	const float unwrapped_orbit_angle_setpoint = _orbit_angle_traj_generator.getCurrentVelocity();
 
 	// Calculate Tangential velocity setpoint vector
-	orbit_tangential_velocity =  Vector2f(-sinf(orbit_angle_setpoint), cosf(orbit_angle_setpoint)) * angular_rate_setpoint * _follow_distance;
+	orbit_tangential_velocity =  Vector2f(-sinf(unwrapped_orbit_angle_setpoint), cosf(unwrapped_orbit_angle_setpoint)) * angular_rate_setpoint * _follow_distance;
 
-	return orbit_angle_setpoint; // Next orbital angle is feasible, set it directly
-
+	return unwrapped_orbit_angle_setpoint; // Next orbital angle is feasible, set it directly
 }
 
 Vector3f FlightTaskAutoFollowTarget::calculate_desired_drone_position(const Vector3f &target_position, const float orbit_angle_setpoint)
