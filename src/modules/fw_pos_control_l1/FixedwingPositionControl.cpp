@@ -823,10 +823,6 @@ FixedwingPositionControl::control_auto(const hrt_abstime &now, const Vector2d &c
 	_att_sp.pitch_reset_integral = false;
 	_att_sp.yaw_reset_integral = false;
 
-	if (pos_sp_curr.valid && pos_sp_curr.type == position_setpoint_s::SETPOINT_TYPE_LOITER) {
-		publishOrbitStatus(pos_sp_curr);
-	}
-
 	position_setpoint_s current_sp = pos_sp_curr;
 
 	if (_vehicle_status.in_transition_to_fw) {
