@@ -99,29 +99,3 @@ PARAM_DEFINE_FLOAT(BAT_EMERGEN_THR, 0.05f);
  * @increment 0.1
  */
 PARAM_DEFINE_FLOAT(BAT_AVRG_CURRENT, 15.0f);
-
-/**
- * Average current consumption in multicopter flight.
- *
- * A negative value means that the value is unkown and dependent features disabled.
- *
- * @group Battery Calibration
- * @unit A
- * @min -1
- * @max 500
- * @increment 0.1
- */
-PARAM_DEFINE_FLOAT(BAT_AVG_I_MC, -1.0f);
-
-/**
- * Average current consumption in fixed-wing flight.
- *
- * A negative value means that the value is unkown and dependent features disabled.
- *
- * @group Battery Calibration
- * @unit A
- * @min -1
- * @max 500
- * @increment 0.1
- */
-PARAM_DEFINE_FLOAT(BAT_AVG_I_FW, -1.0f);
