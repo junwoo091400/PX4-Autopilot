@@ -86,13 +86,6 @@ static constexpr uint64_t TARGET_ESTIMATOR_TIMEOUT_US = 1500000UL;
 // tracking will freeze, since orientation can be noisy in low velocities
 static constexpr float TARGET_SPEED_DEADZONE_FOR_ORIENTATION_TRACKING = 1.0;
 
-// If we use the raw MPC_XY_VEL_MAX and MPC_ACC_HOR_MAX parameters for setting
-// orbit angle trajectory constraints, it will generate the maximum constraints-hitting
-// trajectory that the MPC can handle. But considering target's movements, this trajectory
-// will almost always be infeasible & too aggressive. So we apply this ratio for the
-// constraints to create feasible orbit angle trajectory.
-static constexpr float ORBIT_ANGLE_TRAJECTORY_GENERATOR_CONSTRAINTS_RATIO = 0.5f;
-
 // [m/s] Speed with which the follow distance will be adjusted by when commanded with deflection via RC command
 static constexpr float FOLLOW_DISTANCE_USER_ADJUST_SPEED = 2.0;
 // [m] Maximum follow distance that can be set by user's RC adjustment
@@ -307,9 +300,9 @@ protected:
 		(ParamFloat<px4::params::FLW_TGT_DST>) _param_flw_tgt_dst,
 		(ParamInt<px4::params::FLW_TGT_FS>) _param_flw_tgt_fs,
 		(ParamInt<px4::params::FLW_TGT_ALT_M>) _param_flw_tgt_alt_m,
-		(ParamFloat<px4::params::FLW_TGT_YAW_T>) _param_ft_yaw_t,
-		(ParamFloat<px4::params::MPC_ACC_HOR_MAX>) _param_mpc_acc_hor_max,
-		(ParamFloat<px4::params::MPC_XY_VEL_MAX>) _param_mpc_xy_vel_max
+		(ParamFloat<px4::params::FLW_TGT_YAW_T>) _param_flw_tgt_yaw_t,
+		(ParamFloat<px4::params::FLW_TGT_MAX_VEL>) _param_flw_tgt_max_vel,
+		(ParamFloat<px4::params::FLW_TGT_MAX_ACC>) _param_flw_tgt_max_acc
 	)
 
 	uORB::Subscription _follow_target_estimator_sub{ORB_ID(follow_target_estimator)};

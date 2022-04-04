@@ -201,8 +201,8 @@ float FlightTaskAutoFollowTarget::update_orbit_angle_trajectory(const float targ
 	const float unwrapped_target_orbit_angle = matrix::unwrap_pi(previous_orbit_angle_setpoint, target_orientation + _follow_angle_rad);
 
 	// Calculate limits for orbit angular acceleration and velocity rate
-	_orbit_angle_traj_generator.setMaxJerk((_param_mpc_acc_hor_max.get() / _follow_distance) * ORBIT_ANGLE_TRAJECTORY_GENERATOR_CONSTRAINTS_RATIO);
-	_orbit_angle_traj_generator.setMaxAccel((_param_mpc_xy_vel_max.get() / _follow_distance) * ORBIT_ANGLE_TRAJECTORY_GENERATOR_CONSTRAINTS_RATIO);
+	_orbit_angle_traj_generator.setMaxJerk(_param_flw_tgt_max_acc.get() / _follow_distance);
+	_orbit_angle_traj_generator.setMaxAccel(_param_flw_tgt_max_vel.get() / _follow_distance);
 
 	// Calculate trajectory towards the unwrapped target orbit angle
 	_orbit_angle_traj_generator.updateDurations(unwrapped_target_orbit_angle);
@@ -375,7 +375,7 @@ bool FlightTaskAutoFollowTarget::update()
 			const float yaw_setpoint_raw_unwrapped = matrix::unwrap_pi(_yaw_setpoint_filter.getState(), drone_to_target_heading);
 
 			// Set the parameters for the filter to take update time interval into account
-			_yaw_setpoint_filter.setParameters(_deltatime, _param_ft_yaw_t.get());
+			_yaw_setpoint_filter.setParameters(_deltatime, _param_flw_tgt_yaw_t.get());
 			_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
 
 			// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
