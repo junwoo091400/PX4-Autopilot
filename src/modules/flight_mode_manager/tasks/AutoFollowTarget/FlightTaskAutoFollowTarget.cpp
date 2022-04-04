@@ -110,10 +110,10 @@ void FlightTaskAutoFollowTarget::updateParams() {
 	FlightTask::updateParams();
 
 	// Compare param values and if they have changed, update the properties
-	if (fabsf(follow_distance_prev - _param_flw_tgt_dst.get()) > FLT_EPSILON) {
+	if (matrix::isEqualF(follow_distance_prev, _param_flw_tgt_dst.get())) {
 		_follow_distance = _param_flw_tgt_dst.get();
 	}
-	if (fabsf(follow_height_prev - _param_flw_tgt_ht.get()) > FLT_EPSILON) {
+	if (matrix::isEqualF(follow_height_prev, _param_flw_tgt_ht.get())) {
 		_follow_height = _param_flw_tgt_ht.get();
 	}
 	if (follow_side_prev != _param_flw_tgt_fs.get()) {
