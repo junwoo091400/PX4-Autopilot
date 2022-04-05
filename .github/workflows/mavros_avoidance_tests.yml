@@ -67,8 +67,8 @@ jobs:
         PX4_CMAKE_BUILD_TYPE: ${{matrix.config.build_type}}
       run: |
         ccache -z
-        make px4_sitl_rtps
-        make px4_sitl_rtps sitl_gazebo
+        make px4_sitl_default
+        make px4_sitl_default sitl_gazebo
         ccache -s
 
     - name: Core dump settings
@@ -86,7 +86,7 @@ jobs:
 
     - name: Look at core files
       if: failure()
-      run: gdb build/px4_sitl_rtps/bin/px4 px4.core -ex "thread apply all bt" -ex "quit"
+      run: gdb build/px4_sitl_default/bin/px4 px4.core -ex "thread apply all bt" -ex "quit"
     - name: Upload px4 coredump
       if: failure()
       uses: actions/upload-artifact@v2-preview
@@ -103,7 +103,7 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: binary
-        path: build/px4_sitl_rtps/bin/px4
+        path: build/px4_sitl_default/bin/px4
 
     - name: Store PX4 log
       if: failure()
@@ -124,7 +124,7 @@ jobs:
       if: contains(matrix.config.build_type, 'Coverage')
       run: |
           mkdir -p coverage
-          lcov --directory build/px4_sitl_rtps --base-directory build/px4_sitl_rtps --gcov-tool gcov --capture -o coverage/lcov.info
+          lcov --directory build/px4_sitl_default --base-directory build/px4_sitl_default --gcov-tool gcov --capture -o coverage/lcov.info
     - name: Upload coverage information to Codecov
       if: contains(matrix.config.build_type, 'Coverage')
       uses: codecov/codecov-action@v1
