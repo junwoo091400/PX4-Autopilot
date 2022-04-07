@@ -96,11 +96,11 @@ PARAM_DEFINE_INT32(MAV_SIK_RADIO_ID, 0);
  * @value 16 Flapping wing
  * @value 17 Kite
  * @value 18 Onboard companion controller
- * @value 19 Two-rotor VTOL using control surfaces in vertical operation in addition. Tailsitter.
- * @value 20 Quad-rotor VTOL using a V-shaped quad config in vertical operation. Tailsitter.
- * @value 21 Tiltrotor VTOL
- * @value 22 VTOL reserved 2
- * @value 23 VTOL reserved 3
+ * @value 19 VTOL Two-rotor Tailsitter
+ * @value 20 VTOL Quad-rotor Tailsitter
+ * @value 21 VTOL Tiltrotor
+ * @value 22 VTOL Standard (separate fixed rotors for hover and cruise flight)
+ * @value 23 VTOL Tailsitter
  * @value 24 VTOL reserved 4
  * @value 25 VTOL reserved 5
  * @value 26 Onboard gimbal
