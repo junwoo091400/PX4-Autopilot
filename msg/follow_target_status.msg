@@ -9,3 +9,7 @@ float32 orbit_angle_setpoint  # [rad] Current orbit angle setpoint from the smoo
 
 bool emergency_ascent
 float32 gimbal_pitch
+
+float32[2] orbit_radial_accel # [m/s^2]
+float32[2] orbit_tangential_accel # [m/s^2]
+float32 vel_ramp_in #

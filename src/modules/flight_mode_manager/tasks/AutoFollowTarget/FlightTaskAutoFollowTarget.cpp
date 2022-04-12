@@ -330,6 +330,18 @@ bool FlightTaskAutoFollowTarget::update()
 		// Orbital tangential velocity setpoint from the generated trajectory
 		const Vector2f orbit_tangential_velocity = get_orbit_tangential_velocity(_orbit_angle_setpoint_rad);
 
+		// Calculate orbit acceleration
+		const Vector2f orbit_radial_accel = (orbit_tangential_velocity.norm_squared() / _follow_distance) * Vector2f(-cosf(_orbit_angle_setpoint_rad), -sinf(_orbit_angle_setpoint_rad));
+		const Vector2f orbit_tangential_accel = _orbit_angle_traj_generator.getCurrentJerk() * _follow_distance * Vector2f(-sinf(_orbit_angle_setpoint_rad), cosf(_orbit_angle_setpoint_rad));
+		const Vector2f orbit_total_accel = orbit_radial_accel + orbit_tangential_accel;
+
+		orbit_radial_accel.copyTo(follow_target_status.orbit_radial_accel); // Log them for debug
+		orbit_tangential_accel.copyTo(follow_target_status.orbit_tangential_accel);
+
+		// Velocity ramp calculation
+		// const float vel_ramp_pos_err_threshold = math::max(_velocity.xy().norm() * _param_flw_tgt_v_rmp_t.get(), 1.0f);
+		// float vel_ramp_scalar = math::constrain(1 - drone_to_target_vector.norm() / vel_ramp_pos_err_threshold, )
+
 		// Calculate desired position by applying orbit angle around the target
 		const Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _orbit_angle_setpoint_rad);
 
@@ -337,9 +349,13 @@ bool FlightTaskAutoFollowTarget::update()
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
-				Vector3f orbit_tangential_velocity_3d = Vector3f(orbit_tangential_velocity(0), orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
+				const Vector3f orbit_tangential_velocity_3d = Vector3f(orbit_tangential_velocity(0), orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
 				_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
 				_position_setpoint = drone_desired_position;
+				// Acceleration setpoint feedback
+				if (_param_flw_tgt_acc_fb.get()) {
+					_acceleration_setpoint = Vector3f(orbit_total_accel(0), orbit_total_accel(1), 0.0f); // Zero acc command for Z
+				}
 
 			} else {
 				// Achieve target altitude first before controlling horizontally!
