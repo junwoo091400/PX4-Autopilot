@@ -9,3 +9,9 @@ float32 orbit_angle_setpoint  # [rad] Current orbit angle setpoint from the smoo
 
 bool emergency_ascent
 float32 gimbal_pitch
+
+float32 max_angular_rate_setpoint # [rad/s] Maximum angular rate setpoint calculated from remaining angle & jerk, accel settings
+float32 angular_rate_setpoint
+
+float32[3] desired_position_raw # [m] Raw 'idealistic' desired drone position
+float32 raw_orbit_angle_setpoint # [rad] Raw 'idealistic' orbit angle setpoint (has discrete jumps)
