@@ -63,7 +63,7 @@ VtolLand::on_active()
 	if (is_mission_item_reached()) {
 		switch	(_land_state) {
 		case vtol_land_state::MOVE_TO_LOITER: {
-				_mission_item.altitude = _navigator->get_home_position()->alt + _param_descend_alt_rel_m.get();
+				_mission_item.altitude = _navigator->get_home_position()->alt + _land_approach.height_m;
 				_mission_item.nav_cmd = NAV_CMD_LOITER_TO_ALT;
 				_mission_item.loiter_radius = _param_rtl_loiter_rad.get();
 
