@@ -12,4 +12,4 @@ float32 gimbal_pitch
 
 float32[2] orbit_radial_accel # [m/s^2]
 float32[2] orbit_tangential_accel # [m/s^2]
-float32 vel_ramp_in #
+float32 vel_ramp_scalar #

@@ -338,19 +338,26 @@ bool FlightTaskAutoFollowTarget::update()
 		orbit_radial_accel.copyTo(follow_target_status.orbit_radial_accel); // Log them for debug
 		orbit_tangential_accel.copyTo(follow_target_status.orbit_tangential_accel);
 
-		// Velocity ramp calculation
-		// const float vel_ramp_pos_err_threshold = math::max(_velocity.xy().norm() * _param_flw_tgt_v_rmp_t.get(), 1.0f);
-		// float vel_ramp_scalar = math::constrain(1 - drone_to_target_vector.norm() / vel_ramp_pos_err_threshold, )
-
 		// Calculate desired position by applying orbit angle around the target
 		const Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _orbit_angle_setpoint_rad);
+
+		// Velocity ramp calculation
+		const float vel_ramp_pos_err_threshold = math::max(_velocity.xy().norm() * _param_flw_tgt_v_rmp_t.get(), 1.0f); // minimum to 1.0 meter
+		const float desired_to_real_position_err = (drone_desired_position - _position).xy().norm();
+		const float vel_ramp_scalar = constrain(1 - desired_to_real_position_err / vel_ramp_pos_err_threshold, 0.0f, 1.0f);
+		follow_target_status.vel_ramp_scalar = vel_ramp_scalar;
 
 		if (PX4_ISFINITE(drone_desired_position(0)) && PX4_ISFINITE(drone_desired_position(1))
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
 				const Vector3f orbit_tangential_velocity_3d = Vector3f(orbit_tangential_velocity(0), orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
-				_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
+				if (_param_flw_tgt_v_rmp_en.get()) {
+					_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d * vel_ramp_scalar;
+				}
+				else {
+					_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
+				}
 				_position_setpoint = drone_desired_position;
 				// Acceleration setpoint feedback
 				if (_param_flw_tgt_acc_fb.get()) {
