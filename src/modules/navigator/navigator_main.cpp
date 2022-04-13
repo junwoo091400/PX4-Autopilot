@@ -238,25 +238,24 @@ void Navigator::run()
 
 			_custom_action_ack_last_time = hrt_absolute_time();
 			_custom_action_timeout = false;
-			_reset_custom_action = false;
 
-			if (!_custom_action.timer_started && !_reset_custom_action) {
+			if (!_custom_action.timer_started) {
 				_custom_action.start_time = hrt_absolute_time();
 				_custom_action.timer_started = true;
 			}
 
 			if (_custom_action.timer_started) {
 				if ((hrt_absolute_time() - _custom_action_ack_last_time) < 1500000) {
-					if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED && !_reset_custom_action) {
+					if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_ACCEPTED) {
 						// This makes sure that the info is only printed once, even if multiple ACCEPTED ACKs are received
 						if (_custom_action.id != -1) {
 							mavlink_log_info(get_mavlink_log_pub(), "Custom action #%u finished successfully. Continuing mission...",
 									 _custom_action.id);
 						}
 
-						reset_custom_action();
+						handle_custom_action_success();
 
-					} else if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_FAILED && !_reset_custom_action) {
+					} else if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_FAILED) {
 						// This makes sure that the warning is only printed once, even if multiple FAILED ACKs are received
 						if (_custom_action.id != -1) {
 							mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u failed to be processed / executed.",
@@ -264,10 +263,9 @@ void Navigator::run()
 						}
 
 						handle_custom_action_failure();
-						reset_custom_action();
 						_custom_action_timeout = true;
 
-					} else if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_CANCELLED && !_reset_custom_action) {
+					} else if (_vehicle_cmd_ack.result == vehicle_command_ack_s::VEHICLE_RESULT_CANCELLED) {
 						// This makes sure that the warning is only printed once, even if multiple CANCELLED ACKs are received
 						if (_custom_action.id != -1) {
 							mavlink_log_warning(get_mavlink_log_pub(), "Custom action #%u cancelled.",
@@ -275,7 +273,6 @@ void Navigator::run()
 						}
 
 						handle_custom_action_failure();
-						reset_custom_action();
 						_custom_action_timeout = true;
 
 					}
@@ -293,7 +290,6 @@ void Navigator::run()
 					vcmd_cancel.target_component = 193; // MAV_COMP_ID_ONBOARD_COMPUTER3
 					publish_vehicle_cmd_cancel(&vcmd_cancel);
 					handle_custom_action_failure();
-					reset_custom_action();
 					_custom_action_timeout = true;
 				}
 			}
@@ -313,7 +309,6 @@ void Navigator::run()
 			vcmd_cancel.target_component = 193; // MAV_COMP_ID_ONBOARD_COMPUTER3
 			publish_vehicle_cmd_cancel(&vcmd_cancel);
 			handle_custom_action_failure();
-			reset_custom_action();
 
 			_custom_action_timeout = true;
 		}
@@ -1661,6 +1656,22 @@ void Navigator::set_mission_failure_heading_timeout()
 	}
 }
 
+void Navigator::handle_custom_action_success()
+{
+	if (get_vstatus()->nav_state != vehicle_status_s::NAVIGATION_STATE_AUTO_MISSION) {
+		vehicle_command_s vcmd = {};
+
+		vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
+		vcmd.param1 = 1;
+		vcmd.param2 = 4; // PX4_CUSTOM_MAIN_MODE_AUTO
+		vcmd.param3 = 4; // PX4_CUSTOM_SUB_MODE_AUTO_MISSION
+
+		publish_vehicle_cmd(&vcmd);
+	}
+
+	reset_custom_action();
+}
+
 void Navigator::handle_custom_action_failure()
 {
 	switch (_custom_action.failure_action) {
@@ -1697,6 +1708,8 @@ void Navigator::handle_custom_action_failure()
 			break;
 		}
 	}
+
+	reset_custom_action();
 }
 
 void Navigator::setTerrainFollowerState()
@@ -1847,24 +1860,12 @@ Navigator::disable_camera_trigger()
 void
 Navigator::reset_custom_action()
 {
-	// send cmd to get back to Mission mode if the custom action
-	// requested a mode change or in case of failure
-	vehicle_command_s vcmd = {};
-
-	vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
-	vcmd.param1 = 1;
-	vcmd.param2 = 4; // PX4_CUSTOM_MAIN_MODE_AUTO
-	vcmd.param3 = 4; // PX4_CUSTOM_SUB_MODE_AUTO_MISSION
-
-	publish_vehicle_cmd(&vcmd);
-
 	// reset custom action timer
 	_custom_action.timer_started = false;
 	_custom_action.start_time = -1;
 	_custom_action.timeout = -1;
 
 	_in_custom_action = false;
-	_reset_custom_action = true;
 	// ID of -1 is read as an unset custom_action
 	_custom_action.id = -1;
 

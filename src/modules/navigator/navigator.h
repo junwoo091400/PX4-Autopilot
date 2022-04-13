@@ -325,8 +325,6 @@ public:
 
 	void set_mission_failure_heading_timeout();
 
-	void handle_custom_action_failure();
-
 	void setTerrainFollowerState();
 
 	void setMissionLandingInProgress(bool in_progress) { _mission_landing_in_progress = in_progress; }
@@ -392,6 +390,10 @@ public:
 	void readVtolHomeLandApproachesFromStorage();
 
 private:
+	void handle_custom_action_failure();
+	void handle_custom_action_success();
+	void reset_custom_action();
+
 	struct traffic_buffer_s {
 		uint32_t 	icao_address;
 		hrt_abstime timestamp;
@@ -465,7 +467,6 @@ private:
 	bool 		_custom_action_timeout{false};		/**> custom action timed out **/
 	CustomAction	_custom_action{};			/**< current custom action **/
 	uint64_t	_custom_action_ack_last_time{0};	/**< last time an ack for the custom action command was received **/
-	bool		_reset_custom_action{false};		/**< reset custom action status flag **/
 
 	bool 		_use_vtol_land_navigation_mode_for_rtl = false;
 
@@ -522,8 +523,6 @@ private:
 	void publish_vehicle_command_ack(const vehicle_command_s &cmd, uint8_t result);
 
 	bool geofence_allows_position(const vehicle_global_position_s &pos);
-
-	void reset_custom_action();
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::NAV_LOITER_RAD>)   _param_nav_loiter_rad,	/**< loiter radius for fixedwing */
