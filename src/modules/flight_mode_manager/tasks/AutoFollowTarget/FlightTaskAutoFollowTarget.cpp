@@ -351,6 +351,8 @@ bool FlightTaskAutoFollowTarget::update()
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
+				_position_setpoint = drone_desired_position;
+
 				const Vector3f orbit_tangential_velocity_3d = Vector3f(orbit_tangential_velocity(0), orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
 				// Apply Velocity Ramp-in effect for velocity setpoint
 				if (_param_flw_tgt_v_rmp_en.get()) {
@@ -359,7 +361,7 @@ bool FlightTaskAutoFollowTarget::update()
 				else {
 					_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
 				}
-				_position_setpoint = drone_desired_position;
+
 				// Acceleration setpoint feedback
 				if (_param_flw_tgt_acc_fb.get()) {
 					// If we have Velocity Ramp-in effect, take it into account for acceleration
@@ -369,6 +371,10 @@ bool FlightTaskAutoFollowTarget::update()
 					else {
 						_acceleration_setpoint = Vector3f(orbit_total_accel(0), orbit_total_accel(1), 0.0f);
 					}
+				}
+				else {
+					// Don't set acceleration setpoint if we don't want to command it.
+					_acceleration_setpoint.setAll(NAN);
 				}
 
 			} else {
