@@ -41,11 +41,15 @@ function spawn_model() {
 	pushd "$working_dir" &>/dev/null
 	echo "starting instance $N in $(pwd)"
 
-	export PX4_VIDEO_HOST_IP=${PX4_VIDEO_HOST_IP%.*}.$((7+$N))
-	echo "PX4_VIDEO_HOST_IP '$PX4_VIDEO_HOST_IP'"
+	if [[ -n "${PX4_VIDEO_HOST_IP}" ]]; then
+		export PX4_VIDEO_HOST_IP=${PX4_VIDEO_HOST_IP%.*}.$((7+$N))
+		echo "PX4_VIDEO_HOST_IP '$PX4_VIDEO_HOST_IP'"
+	fi
 
-	export PX4_SIM_REMOTE_HOST=${PX4_SIM_REMOTE_HOST%.*}.$((7+$N))
-	echo "PX4_SIM_REMOTE_HOST '$PX4_SIM_REMOTE_HOST'"
+	if [[ -n "${PX4_SIM_REMOTE_HOST}" ]]; then
+		export PX4_SIM_REMOTE_HOST=${PX4_SIM_REMOTE_HOST%.*}.$((7+$N))
+		echo "PX4_SIM_REMOTE_HOST '$PX4_SIM_REMOTE_HOST'"
+	fi
 
 	../bin/px4 -i $N -d "$build_path/etc" -w sitl_${MODEL}_${N} -s etc/init.d-posix/rcS >out.log 2>err.log &
 	python3 ${src_path}/Tools/sitl_gazebo/scripts/jinja_gen.py ${src_path}/Tools/sitl_gazebo/models/${MODEL}/${MODEL}.sdf.jinja ${src_path}/Tools/sitl_gazebo --mavlink_tcp_port $((4560+${N})) --mavlink_udp_port $((14560+${N})) --mavlink_id $((1+${N})) --gst_udp_host 172.5.0.$((7+${N})) --gst_udp_port $((5600)) --video_uri $((5600+${N})) --mavlink_cam_udp_port $((14530+${N})) --udp_onboard_gimbal_port_local $((13030+${N})) --output-file /tmp/${MODEL}_${N}.sdf --vehicle_id ${N}
