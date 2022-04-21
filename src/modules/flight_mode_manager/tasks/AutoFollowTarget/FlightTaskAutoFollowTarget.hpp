@@ -303,7 +303,8 @@ protected:
 		(ParamFloat<px4::params::FLW_TGT_YAW_T>) _param_flw_tgt_yaw_t,
 		(ParamFloat<px4::params::FLW_TGT_MAX_VEL>) _param_flw_tgt_max_vel,
 		(ParamFloat<px4::params::FLW_TGT_MAX_ACC>) _param_flw_tgt_max_acc,
-		(ParamInt<px4::params::FLW_TGT_ACC_FB>) _param_flw_tgt_acc_fb,
+		(ParamFloat<px4::params::FLW_TGT_MAX_JERK>) _param_flw_tgt_max_jerk,
+		(ParamInt<px4::params::FLW_TGT_ACC_FF>) _param_flw_tgt_acc_ff,
 		(ParamInt<px4::params::FLW_TGT_V_RMP_EN>) _param_flw_tgt_v_rmp_en,
 		(ParamFloat<px4::params::FLW_TGT_V_RMP_T>) _param_flw_tgt_v_rmp_t
 	)

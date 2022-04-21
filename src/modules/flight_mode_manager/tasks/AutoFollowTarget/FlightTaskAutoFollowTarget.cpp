@@ -86,8 +86,6 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 
 	// Reset the orbit angle trajectory generator and set maximum angular acceleration and rate
 	_orbit_angle_traj_generator.reset(0.f, 0.f, 0.f);
-	// Set Orbit Angle limit to float maximum value, to allow tracking of unwrapped orbit angle.
-	_orbit_angle_traj_generator.setMaxVel(FLT_MAX);
 
 	// Save the home position z value to enable relative altitude setpoints to arming position (home) altitude
 	if (_sub_home_position.get().valid_alt) {
@@ -198,25 +196,33 @@ void FlightTaskAutoFollowTarget::update_target_orientation(const Vector2f &targe
 float FlightTaskAutoFollowTarget::update_orbit_angle_trajectory(const float target_orientation, const float previous_orbit_angle_setpoint)
 {
 	// Raw target orbit (setpoint) angle, unwrapped to be relative to the previous orbit angle setpoint
-	const float unwrapped_target_orbit_angle = matrix::unwrap_pi(previous_orbit_angle_setpoint, target_orientation + _follow_angle_rad);
+	const float unwrapped_raw_orbit_angle = matrix::unwrap_pi(previous_orbit_angle_setpoint, target_orientation + _follow_angle_rad);
 
 	// Calculate limits for orbit angular acceleration and velocity rate
-	_orbit_angle_traj_generator.setMaxJerk(_param_flw_tgt_max_acc.get() / _follow_distance);
-	_orbit_angle_traj_generator.setMaxAccel(_param_flw_tgt_max_vel.get() / _follow_distance);
+	_orbit_angle_traj_generator.setMaxJerk(_param_flw_tgt_max_jerk.get() / _follow_distance);
+	_orbit_angle_traj_generator.setMaxAccel(_param_flw_tgt_max_acc.get() / _follow_distance);
+	_orbit_angle_traj_generator.setMaxVel(_param_flw_tgt_max_vel.get() / _follow_distance);
+
+	// Calculate the maximum angular rate setpoint based on remaining angle to raw target
+	const float remaining_angle = unwrapped_raw_orbit_angle - previous_orbit_angle_setpoint;
+	const float remaining_angle_sign = matrix::sign(remaining_angle);
+	const float max_rate = math::trajectory::computeMaxSpeedFromDistance(_orbit_angle_traj_generator.getMaxJerk(), _orbit_angle_traj_generator.getMaxAccel(), fabsf(remaining_angle), 0.f);
+
+	// Set angular rate setpoint, considering the sign direction
+	_orbit_angle_traj_generator.updateDurations(max_rate * remaining_angle_sign);
 
 	// Calculate trajectory towards the unwrapped target orbit angle
-	_orbit_angle_traj_generator.updateDurations(unwrapped_target_orbit_angle);
 	_orbit_angle_traj_generator.updateTraj(_deltatime);
 
 	// Get the calculaed angle setpoint
-	const float unwrapped_orbit_angle_setpoint = _orbit_angle_traj_generator.getCurrentVelocity();
+	const float unwrapped_orbit_angle_setpoint = _orbit_angle_traj_generator.getCurrentPosition();
 
 	return unwrapped_orbit_angle_setpoint;
 }
 
 Vector2f FlightTaskAutoFollowTarget::get_orbit_tangential_velocity(const float orbit_angle_setpoint) const
 {
-	const float angular_rate_setpoint = _orbit_angle_traj_generator.getCurrentAcceleration();
+	const float angular_rate_setpoint = _orbit_angle_traj_generator.getCurrentVelocity();
 	// Calculate Tangential velocity setpoint vector
 	return Vector2f(-sinf(orbit_angle_setpoint), cosf(orbit_angle_setpoint)) * angular_rate_setpoint * _follow_distance;
 }
@@ -324,6 +330,9 @@ bool FlightTaskAutoFollowTarget::update()
 		// Update target orientation to track
 		update_target_orientation(target_velocity_filtered.xy(), _target_course_rad);
 
+		// [Debug] Log Raw idealistic orbit angle setpoint
+		follow_target_status.raw_orbit_angle_setpoint = matrix::unwrap_pi(_orbit_angle_setpoint_rad, _target_course_rad + _follow_angle_rad);
+
 		// Update the new orbit angle (rate constrained)
 		_orbit_angle_setpoint_rad = update_orbit_angle_trajectory(_target_course_rad, _orbit_angle_setpoint_rad);
 
@@ -341,10 +350,11 @@ bool FlightTaskAutoFollowTarget::update()
 
 		// Calculate orbit acceleration
 		const Vector2f orbit_radial_accel = (orbit_tangential_velocity.norm_squared() / _follow_distance) * Vector2f(-cosf(_orbit_angle_setpoint_rad), -sinf(_orbit_angle_setpoint_rad));
-		const Vector2f orbit_tangential_accel = _orbit_angle_traj_generator.getCurrentJerk() * _follow_distance * Vector2f(-sinf(_orbit_angle_setpoint_rad), cosf(_orbit_angle_setpoint_rad));
+		const Vector2f orbit_tangential_accel = _orbit_angle_traj_generator.getCurrentAcceleration() * _follow_distance * Vector2f(-sinf(_orbit_angle_setpoint_rad), cosf(_orbit_angle_setpoint_rad));
 		const Vector2f orbit_total_accel = orbit_radial_accel + orbit_tangential_accel;
 
-		orbit_radial_accel.copyTo(follow_target_status.orbit_radial_accel); // Log them for debug
+		// [Debug] Log Calculated Acceleration setpoints
+		orbit_radial_accel.copyTo(follow_target_status.orbit_radial_accel);
 		orbit_tangential_accel.copyTo(follow_target_status.orbit_tangential_accel);
 
 		if (PX4_ISFINITE(drone_desired_position(0)) && PX4_ISFINITE(drone_desired_position(1))
@@ -362,8 +372,8 @@ bool FlightTaskAutoFollowTarget::update()
 					_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
 				}
 
-				// Acceleration setpoint feedback
-				if (_param_flw_tgt_acc_fb.get()) {
+				// Acceleration setpoint feed forward
+				if (_param_flw_tgt_acc_ff.get()) {
 					// If we have Velocity Ramp-in effect, take it into account for acceleration
 					if (_param_flw_tgt_v_rmp_en.get()) {
 						_acceleration_setpoint = Vector3f(orbit_total_accel(0), orbit_total_accel(1), 0.0f) * vel_ramp_scalar;
@@ -382,7 +392,6 @@ bool FlightTaskAutoFollowTarget::update()
 				_position_setpoint = _position;
 				_position_setpoint(2) = drone_desired_position(2);
 			}
-
 		} else {
 			// Control setpoint: Stay in current position
 			_position_setpoint = _position;
@@ -435,10 +444,19 @@ bool FlightTaskAutoFollowTarget::update()
 
 	follow_target_status.tracked_target_course = _target_course_rad;
 	follow_target_status.follow_angle = _follow_angle_rad;
+
 	follow_target_status.orbit_angle_setpoint = _orbit_angle_setpoint_rad;
 
-	follow_target_status.emergency_ascent = emergency_ascent; // Log emergency ascent state
-	follow_target_status.gimbal_pitch = gimbal_pitch; // Log gimbal pitch
+	follow_target_status.emergency_ascent = emergency_ascent;
+	follow_target_status.gimbal_pitch = gimbal_pitch;
+
+	// [Debug] Log orbit angle max & actual rate setpoint
+	follow_target_status.max_angular_rate_setpoint = _orbit_angle_traj_generator.getVelSp();
+	follow_target_status.angular_rate_setpoint = _orbit_angle_traj_generator.getCurrentVelocity();
+
+	// [Debug] Log desired Raw Follow position
+	const Vector3f drone_desired_position_raw = calculate_desired_drone_position(_target_position_velocity_filter.getState(), _target_course_rad + _follow_angle_rad);
+	drone_desired_position_raw.copyTo(follow_target_status.desired_position_raw);
 
 	_follow_target_status_pub.publish(follow_target_status);
 

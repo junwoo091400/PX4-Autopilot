@@ -124,12 +124,17 @@ PARAM_DEFINE_FLOAT(FLW_TGT_YAW_T, 0.1f);
  */
 PARAM_DEFINE_FLOAT(FLW_TGT_RS, 0.1f);
 
+// <<<<<< DEVELOPMENT Purpose Params >>>>>>>>>
+
+// Max Velocity around follow circle
 PARAM_DEFINE_FLOAT(FLW_TGT_MAX_VEL, 5.0f);
-
+// Max Acceleration around follow circle
 PARAM_DEFINE_FLOAT(FLW_TGT_MAX_ACC, 5.0f);
+// Max Jerk around follow circle
+PARAM_DEFINE_FLOAT(FLW_TGT_MAX_JERK, 4.0f);
 
-// Acceleration feedback enable for Trajectory setpoint
-PARAM_DEFINE_INT32(FLW_TGT_ACC_FB, 0);
+// Acceleration feed forward enable for Trajectory setpoint
+PARAM_DEFINE_INT32(FLW_TGT_ACC_FF, 0);
 
 // Enable ramp-in for the position error based velocity feedback term
 // to solve a case where the drone is too off from the target position
