@@ -21,4 +21,7 @@ float32 max_angular_rate_setpoint # [rad/s] Maximum angular rate setpoint calcul
 float32 angular_rate_setpoint
 
 float32[3] desired_position_raw # [m] Raw 'idealistic' desired drone position
+
 float32 raw_orbit_angle_setpoint # [rad] Raw 'idealistic' orbit angle setpoint (has discrete jumps)
+
+float32 tracked_orbit_rate

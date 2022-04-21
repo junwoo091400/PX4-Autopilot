@@ -79,6 +79,9 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 	_yawspeed_setpoint = NAN;
 	_yaw_setpoint_filter.reset(NAN);
 
+	// Initialize Raw Orbit Angle Rate filter state
+	_raw_orbit_angle_rate_filter.reset(NAN);
+
 	// Update the internally tracked Follow Target characteristics
 	_follow_angle_rad = math::radians(get_follow_angle_setting_deg((FollowPerspective)_param_flw_tgt_fs.get()));
 	_follow_distance = _param_flw_tgt_dst.get();
@@ -195,21 +198,44 @@ void FlightTaskAutoFollowTarget::update_target_orientation(const Vector2f &targe
 
 float FlightTaskAutoFollowTarget::update_orbit_angle_trajectory(const float target_orientation, const float previous_orbit_angle_setpoint)
 {
+	// Static orbit angle instance to track raw orbit angle rate
+	static float previous_raw_orbit_angle{NAN};
+
 	// Raw target orbit (setpoint) angle, unwrapped to be relative to the previous orbit angle setpoint
 	const float unwrapped_raw_orbit_angle = matrix::unwrap_pi(previous_orbit_angle_setpoint, target_orientation + _follow_angle_rad);
 
-	// Calculate limits for orbit angular acceleration and velocity rate
+	// Update orbit angle rate filter
+	if (PX4_ISFINITE(previous_raw_orbit_angle)) {
+		const float orbit_angle_rate = (unwrapped_raw_orbit_angle - previous_raw_orbit_angle) / _deltatime;
+		if (PX4_ISFINITE(_raw_orbit_angle_rate_filter.getState())) {
+			_raw_orbit_angle_rate_filter.setParameters(_deltatime, RAW_ORBIT_ANGLE_RATE_FILTER_T);
+			_raw_orbit_angle_rate_filter.update(orbit_angle_rate);
+		}
+		else {
+			_raw_orbit_angle_rate_filter.reset(orbit_angle_rate);
+		}
+	}
+	// Update internally tracked raw orbit angle
+	previous_raw_orbit_angle = unwrapped_raw_orbit_angle;
+
+	// Calculate orbit angle error to raw target to previous setpoint in [-PI, +PI]
+	const float orbit_angle_error = unwrapped_raw_orbit_angle - previous_orbit_angle_setpoint;
+	const float orbit_angle_error_sign = matrix::sign(orbit_angle_error);
+
+	// Calculate the maximum angular rate setpoint based on remaining angle to raw target// Calculate limits for orbit angular acceleration and velocity rate
 	_orbit_angle_traj_generator.setMaxJerk(_param_flw_tgt_max_jerk.get() / _follow_distance);
 	_orbit_angle_traj_generator.setMaxAccel(_param_flw_tgt_max_acc.get() / _follow_distance);
 	_orbit_angle_traj_generator.setMaxVel(_param_flw_tgt_max_vel.get() / _follow_distance);
 
-	// Calculate the maximum angular rate setpoint based on remaining angle to raw target
-	const float remaining_angle = unwrapped_raw_orbit_angle - previous_orbit_angle_setpoint;
-	const float remaining_angle_sign = matrix::sign(remaining_angle);
-	const float max_rate = math::trajectory::computeMaxSpeedFromDistance(_orbit_angle_traj_generator.getMaxJerk(), _orbit_angle_traj_generator.getMaxAccel(), fabsf(remaining_angle), 0.f);
+	// Set Final Velocity for calculating max speed from braking distance
+	const float velocity_final = PX4_ISFINITE(_raw_orbit_angle_rate_filter.getState()) ? _raw_orbit_angle_rate_filter.getState() : 0.f;
+
+	// Calculate Max orbit rate
+	const float max_orbit_rate = math::trajectory::computeMaxSpeedFromDistance(_orbit_angle_traj_generator.getMaxJerk(), _orbit_angle_traj_generator.getMaxAccel(),
+												 fabsf(orbit_angle_error), velocity_final);
 
 	// Set angular rate setpoint, considering the sign direction
-	_orbit_angle_traj_generator.updateDurations(max_rate * remaining_angle_sign);
+	_orbit_angle_traj_generator.updateDurations(max_orbit_rate * orbit_angle_error_sign);
 
 	// Calculate trajectory towards the unwrapped target orbit angle
 	_orbit_angle_traj_generator.updateTraj(_deltatime);
@@ -457,6 +483,9 @@ bool FlightTaskAutoFollowTarget::update()
 	// [Debug] Log desired Raw Follow position
 	const Vector3f drone_desired_position_raw = calculate_desired_drone_position(_target_position_velocity_filter.getState(), _target_course_rad + _follow_angle_rad);
 	drone_desired_position_raw.copyTo(follow_target_status.desired_position_raw);
+
+	// [Debug] Log tracked (filtered) Orbit Angle Setpoint Rate
+	follow_target_status.tracked_orbit_rate = _raw_orbit_angle_rate_filter.getState();
 
 	_follow_target_status_pub.publish(follow_target_status);
 
