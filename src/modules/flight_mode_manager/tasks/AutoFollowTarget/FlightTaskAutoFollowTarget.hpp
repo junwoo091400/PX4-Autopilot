@@ -108,10 +108,6 @@ static constexpr float USER_ADJUSTMENT_ERROR_TIME_WINDOW = 0.5f;
 // Deadzone on both +/- direction for normalized stick input (-1, +1) where user adjustment will be ignored
 static constexpr float USER_ADJUSTMENT_DEADZONE = 0.1f;
 
-// AlphaFilter constant for tracking the raw orbit angle rate, needed for the final velocity setpoint for braking distance based
-// Velocity setpoint calculation used for orbit angle trajectory generator
-static constexpr float RAW_ORBIT_ANGLE_RATE_FILTER_T = 0.1f;
-
 
 class FlightTaskAutoFollowTarget : public FlightTask
 {
@@ -292,9 +288,6 @@ protected:
 	// Angular acceleration limited orbit angle setpoint curve trajectory generator
 	VelocitySmoothing _orbit_angle_traj_generator;
 
-	// Raw Orbit Angle rate filter
-	AlphaFilter<float> _raw_orbit_angle_rate_filter;
-
 	// Yaw setpoint filter to remove jitter-ness
 	AlphaFilter<float> _yaw_setpoint_filter;
 
@@ -318,6 +311,6 @@ protected:
 
 	uORB::Subscription _follow_target_estimator_sub{ORB_ID(follow_target_estimator)};
 
-	uORB::Publication<follow_target_status_s> _follow_target_status_pub{ORB_ID(follow_target_status)};
-	uORB::Publication<gimbal_manager_set_attitude_s> _gimbal_manager_set_attitude_pub{ORB_ID(gimbal_manager_set_attitude)};
+	uORB::PublicationMulti<follow_target_status_s> _follow_target_status_pub{ORB_ID(follow_target_status)};
+	uORB::PublicationMulti<gimbal_manager_set_attitude_s> _gimbal_manager_set_attitude_pub{ORB_ID(gimbal_manager_set_attitude)};
 };
