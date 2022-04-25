@@ -183,12 +183,11 @@ void FlightTaskAutoFollowTarget::update_rc_adjusted_follow_angle(const Sticks &s
 	}
 }
 
-void FlightTaskAutoFollowTarget::update_target_orientation(const Vector2f &target_velocity, float &current_target_orientation)
+void FlightTaskAutoFollowTarget::update_target_orientation(float &current_target_orientation, const Vector2f &target_velocity, const Vector2f &target_velocity_unfiltered)
 {
-	const float target_velocity_norm = target_velocity.norm(); // Get 2D projected target speed [m/s]
-
-	// Depending on the target velocity, freeze or set new target orientatino value
-	if(target_velocity_norm >= TARGET_SPEED_DEADZONE_FOR_ORIENTATION_TRACKING) {
+	// If both filtered & unfiltered target velocity are above the deadzone velocity, update the target orientation
+	if((target_velocity.norm() >= TARGET_SPEED_DEADZONE_FOR_ORIENTATION_TRACKING)
+	 && (target_velocity_unfiltered.norm() >= TARGET_SPEED_DEADZONE_FOR_ORIENTATION_TRACKING)) {
 		current_target_orientation = atan2f(target_velocity(1), target_velocity(0));
 	}
 }
@@ -223,7 +222,6 @@ float FlightTaskAutoFollowTarget::update_orbit_angle_trajectory(const float targ
 Vector2f FlightTaskAutoFollowTarget::get_orbit_tangential_velocity(const float orbit_angle_setpoint) const
 {
 	const float angular_rate_setpoint = _orbit_angle_traj_generator.getCurrentVelocity();
-	// Calculate Tangential velocity setpoint vector
 	return Vector2f(-sinf(orbit_angle_setpoint), cosf(orbit_angle_setpoint)) * angular_rate_setpoint * _follow_distance;
 }
 
@@ -328,7 +326,7 @@ bool FlightTaskAutoFollowTarget::update()
 		}
 
 		// Update target orientation to track
-		update_target_orientation(target_velocity_filtered.xy(), _target_course_rad);
+		update_target_orientation(_target_course_rad, target_velocity_filtered.xy(), Vector3f(_follow_target_estimator.vel_est).xy());
 
 		// [Debug] Log Raw idealistic orbit angle setpoint
 		follow_target_status.raw_orbit_angle_setpoint = matrix::unwrap_pi(_orbit_angle_setpoint_rad, _target_course_rad + _follow_angle_rad);
@@ -343,7 +341,7 @@ bool FlightTaskAutoFollowTarget::update()
 		const Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _orbit_angle_setpoint_rad);
 
 		// Velocity ramp calculation
-		const float vel_ramp_pos_err_threshold = math::max(_velocity.xy().norm() * _param_flw_tgt_v_rmp_t.get(), 1.0f); // minimum to 1.0 meter
+		const float vel_ramp_pos_err_threshold = math::max((target_velocity_filtered - _velocity).xy().norm() * _param_flw_tgt_v_rmp_t.get(), 1.0f); // minimum to 1.0 meter
 		const float desired_to_real_position_err = (drone_desired_position - _position).xy().norm();
 		const float vel_ramp_scalar = constrain(1 - desired_to_real_position_err / vel_ramp_pos_err_threshold, 0.0f, 1.0f);
 		follow_target_status.vel_ramp_scalar = vel_ramp_scalar;
@@ -361,25 +359,23 @@ bool FlightTaskAutoFollowTarget::update()
 		    && PX4_ISFINITE(drone_desired_position(2))) {
 			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
+				// Position setpoint
 				_position_setpoint = drone_desired_position;
-
-				const Vector3f orbit_tangential_velocity_3d = Vector3f(orbit_tangential_velocity(0), orbit_tangential_velocity(1), 0.0f); // Zero velocity command for Z
-				// Apply Velocity Ramp-in effect for velocity setpoint
+				// Velocity setpoint
 				if (_param_flw_tgt_v_rmp_en.get()) {
-					_velocity_setpoint = (target_velocity_filtered + orbit_tangential_velocity_3d) * vel_ramp_scalar;
+					_velocity_setpoint.xy() = (orbit_tangential_velocity + target_velocity_filtered.xy()) * vel_ramp_scalar;
 				}
 				else {
-					_velocity_setpoint = target_velocity_filtered + orbit_tangential_velocity_3d; // Target velocity + Orbit Tangential velocity
+					_velocity_setpoint.xy() = orbit_tangential_velocity + target_velocity_filtered.xy(); // Target velocity + Orbit Tangential velocity
 				}
-
-				// Acceleration setpoint feed forward
+				// Acceleration setpoint
 				if (_param_flw_tgt_acc_ff.get()) {
 					// If we have Velocity Ramp-in effect, take it into account for acceleration
 					if (_param_flw_tgt_v_rmp_en.get()) {
-						_acceleration_setpoint = Vector3f(orbit_total_accel(0), orbit_total_accel(1), 0.0f) * vel_ramp_scalar;
+						_acceleration_setpoint.xy() = orbit_total_accel * vel_ramp_scalar;
 					}
 					else {
-						_acceleration_setpoint = Vector3f(orbit_total_accel(0), orbit_total_accel(1), 0.0f);
+						_acceleration_setpoint.xy() = orbit_total_accel;
 					}
 				}
 				else {
