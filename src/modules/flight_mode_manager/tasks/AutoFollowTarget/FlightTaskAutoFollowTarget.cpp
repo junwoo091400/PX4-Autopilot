@@ -339,49 +339,23 @@ bool FlightTaskAutoFollowTarget::update()
 		// Calculate desired position by applying orbit angle around the target
 		const Vector3f drone_desired_position = calculate_desired_drone_position(target_position_filtered, _orbit_angle_setpoint_rad);
 
-		// Velocity ramp calculation
-		const float vel_ramp_pos_err_threshold = math::max((target_velocity_filtered - _velocity).xy().norm() * _param_flw_tgt_v_rmp_t.get(), 1.0f); // minimum to 1.0 meter
-		const float desired_to_real_position_err = (drone_desired_position - _position).xy().norm();
-		const float vel_ramp_scalar = constrain(1 - desired_to_real_position_err / vel_ramp_pos_err_threshold, 0.0f, 1.0f);
-		follow_target_status.vel_ramp_scalar = vel_ramp_scalar;
+		// NOTE : Currently if Follow Target is activated when the drone is very far away from the target, since trajectory setpoint's velocity & acceleration
+		// components are directly applied in the Multicopter-Position-Controller, it can command orbiting velocity / acceleration setpoints even when the
+		// drone hasn't reached the target orbit angle setpoint yet. Which will interfere with the drone coming straight towards the orbit angle setpoint.
+		// This has to be dealed with in the Multicopter-Rate-Controller, where it should not command acceleration feed forward (setpoint) directly if there's a big pos/vel error.
 
 		// Calculate orbit acceleration
 		const Vector2f orbit_radial_accel = (orbit_tangential_velocity.norm_squared() / _follow_distance) * Vector2f(-cosf(_orbit_angle_setpoint_rad), -sinf(_orbit_angle_setpoint_rad));
 		const Vector2f orbit_tangential_accel = _orbit_angle_traj_generator.getCurrentAcceleration() * _follow_distance * Vector2f(-sinf(_orbit_angle_setpoint_rad), cosf(_orbit_angle_setpoint_rad));
 		const Vector2f orbit_total_accel = orbit_radial_accel + orbit_tangential_accel;
 
-		// [Debug] Log Calculated Acceleration setpoints
-		orbit_radial_accel.copyTo(follow_target_status.orbit_radial_accel);
-		orbit_tangential_accel.copyTo(follow_target_status.orbit_tangential_accel);
-
 		if (PX4_ISFINITE(drone_desired_position(0)) && PX4_ISFINITE(drone_desired_position(1))
 		    && PX4_ISFINITE(drone_desired_position(2))) {
-			// Only control horizontally if drone is on target altitude to avoid accidents
 			if (fabsf(drone_desired_position(2) - _position(2)) < ALT_ACCEPTANCE_THRESHOLD) {
-				// Position setpoint
+				// Only control horizontally if drone is on target altitude to avoid accidents
 				_position_setpoint = drone_desired_position;
-				// Velocity setpoint
-				if (_param_flw_tgt_v_rmp_en.get()) {
-					_velocity_setpoint.xy() = (orbit_tangential_velocity + target_velocity_filtered.xy()) * vel_ramp_scalar;
-				}
-				else {
-					_velocity_setpoint.xy() = orbit_tangential_velocity + target_velocity_filtered.xy(); // Target velocity + Orbit Tangential velocity
-				}
-				// Acceleration setpoint
-				if (_param_flw_tgt_acc_ff.get()) {
-					// If we have Velocity Ramp-in effect, take it into account for acceleration
-					if (_param_flw_tgt_v_rmp_en.get()) {
-						_acceleration_setpoint.xy() = orbit_total_accel * vel_ramp_scalar;
-					}
-					else {
-						_acceleration_setpoint.xy() = orbit_total_accel;
-					}
-				}
-				else {
-					// Don't set acceleration setpoint if we don't want to command it.
-					_acceleration_setpoint.setAll(NAN);
-				}
-
+				_velocity_setpoint.xy() = orbit_tangential_velocity + target_velocity_filtered.xy(); // Target velocity + Orbit Tangential velocity
+				_acceleration_setpoint.xy() = orbit_total_accel;
 			} else {
 				// Achieve target altitude first before controlling horizontally!
 				_position_setpoint = _position;
