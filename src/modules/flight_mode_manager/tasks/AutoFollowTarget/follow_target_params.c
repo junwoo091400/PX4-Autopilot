@@ -37,6 +37,7 @@
  * Parameters for follow target mode
  *
  * @author Jimmy Johnson <catch22@fastmail.net>
+ * @author Junwoo Hwang <junwoo091400@gmail.com>
  */
 
 /*
@@ -44,7 +45,7 @@
  */
 
 /**
- * Follow target altitude
+ * Follow target height
  *
  * The height in meters for following a target
  *
