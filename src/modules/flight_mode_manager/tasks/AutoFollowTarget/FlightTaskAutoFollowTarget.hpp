@@ -306,9 +306,6 @@ protected:
 	// Angular acceleration limited orbit angle setpoint curve trajectory generator
 	VelocitySmoothing _orbit_angle_traj_generator;
 
-	// Yaw setpoint filter to remove jitter-ness
-	AlphaFilter<float> _yaw_setpoint_filter;
-
 	// Variable to remember the home position's z coordinate, which will be baseline for the position z setpoint
 	float _home_position_z;
 
@@ -318,7 +315,6 @@ protected:
 		(ParamFloat<px4::params::FLW_TGT_DST>) _param_flw_tgt_dst,
 		(ParamInt<px4::params::FLW_TGT_FS>) _param_flw_tgt_fs,
 		(ParamInt<px4::params::FLW_TGT_ALT_M>) _param_flw_tgt_alt_m,
-		(ParamFloat<px4::params::FLW_TGT_YAW_T>) _param_flw_tgt_yaw_t,
 		(ParamFloat<px4::params::FLW_TGT_MAX_VEL>) _param_flw_tgt_max_vel,
 		(ParamFloat<px4::params::FLW_TGT_MAX_ACC>) _param_flw_tgt_max_acc,
 		(ParamFloat<px4::params::FLW_TGT_MAX_JERK>) _param_flw_tgt_max_jerk,

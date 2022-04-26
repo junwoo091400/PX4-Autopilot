@@ -77,7 +77,6 @@ bool FlightTaskAutoFollowTarget::activate(const vehicle_local_position_setpoint_
 
 	// We don't command the yawspeed, since only the yaw can be calculated off of the target
 	_yawspeed_setpoint = NAN;
-	_yaw_setpoint_filter.reset(NAN);
 
 	// Update the internally tracked Follow Target characteristics
 	_follow_angle_rad = math::radians(get_follow_angle_setting_deg((FollowPerspective)_param_flw_tgt_fs.get()));
@@ -406,22 +405,7 @@ bool FlightTaskAutoFollowTarget::update()
 
 		// Update Yaw setpoint if we're far enough for yaw control
 		if (drone_to_target_vector.longerThan(MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL)) {
-			// If the filter hasn't been initialized yet, reset the state to raw heading value
-			if (!PX4_ISFINITE(_yaw_setpoint_filter.getState())) {
-				_yaw_setpoint_filter.reset(drone_to_target_heading);
-			}
-
-			// Unwrap : Needed since when filter's tracked state is around -M_PI, and the raw angle goes to
-			// +M_PI, the filter can just average them out and give wrong output.
-			const float yaw_setpoint_raw_unwrapped = matrix::unwrap_pi(_yaw_setpoint_filter.getState(), drone_to_target_heading);
-
-			// Set the parameters for the filter to take update time interval into account
-			_yaw_setpoint_filter.setParameters(_deltatime, _param_flw_tgt_yaw_t.get());
-			_yaw_setpoint_filter.update(yaw_setpoint_raw_unwrapped);
-
-			// Wrap : keep the tracked filter state within [-M_PI, M_PI], to keep yaw setpoint filter's state from diverging.
-			_yaw_setpoint_filter.reset(matrix::wrap_pi(_yaw_setpoint_filter.getState()));
-			_yaw_setpoint = _yaw_setpoint_filter.getState();
+			_yaw_setpoint = drone_to_target_heading;
 		}
 		// Calculate Gimbal setpoint to track target in the center of the view
 		const float gimbal_height = calculate_gimbal_height((FollowAltitudeMode)_param_flw_tgt_alt_m.get(), target_position_filtered(2));
