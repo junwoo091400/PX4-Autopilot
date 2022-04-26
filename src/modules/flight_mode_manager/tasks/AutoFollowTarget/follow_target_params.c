@@ -114,11 +114,15 @@ PARAM_DEFINE_INT32(FLW_TGT_ALT_M, 0);
  */
 PARAM_DEFINE_FLOAT(FLW_TGT_RS, 0.1f);
 
-// <<<<<< DEVELOPMENT Purpose Params >>>>>>>>>
-
-// Max Velocity around follow circle
+/**
+ * Maximum velocity setting for generating the follow orbit trajectory
+ *
+ * This is the maximum velocity the drone will circle around the target whenever
+ * an orbit angle setpoint changes. Higher value means more aggressive follow behavior.
+ *
+ * @min 0.0
+ * @max 20.0
+ * @decimal 1
+ * @group Follow target
+ */
 PARAM_DEFINE_FLOAT(FLW_TGT_MAX_VEL, 5.0f);
-// Max Acceleration around follow circle
-PARAM_DEFINE_FLOAT(FLW_TGT_MAX_ACC, 5.0f);
-// Max Jerk around follow circle
-PARAM_DEFINE_FLOAT(FLW_TGT_MAX_JERK, 4.0f);

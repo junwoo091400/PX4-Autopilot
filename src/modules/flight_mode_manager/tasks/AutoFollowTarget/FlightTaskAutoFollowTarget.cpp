@@ -197,8 +197,8 @@ float FlightTaskAutoFollowTarget::update_orbit_angle_trajectory(const float targ
 	const float unwrapped_raw_orbit_angle = matrix::unwrap_pi(previous_orbit_angle_setpoint, target_orientation + _follow_angle_rad);
 
 	// Calculate limits for orbit angular acceleration and velocity rate
-	_orbit_angle_traj_generator.setMaxJerk(_param_flw_tgt_max_jerk.get() / _follow_distance);
-	_orbit_angle_traj_generator.setMaxAccel(_param_flw_tgt_max_acc.get() / _follow_distance);
+	_orbit_angle_traj_generator.setMaxJerk(ORBIT_TRAJECTORY_MAX_JERK / _follow_distance);
+	_orbit_angle_traj_generator.setMaxAccel(ORBIT_TRAJECTORY_MAX_ACCELERATION / _follow_distance);
 	_orbit_angle_traj_generator.setMaxVel(_param_flw_tgt_max_vel.get() / _follow_distance);
 
 	// Calculate the maximum angular rate setpoint based on remaining angle to raw target
@@ -293,7 +293,7 @@ float FlightTaskAutoFollowTarget::calculate_gimbal_height(const FollowAltitudeMo
 bool FlightTaskAutoFollowTarget::update()
 {
 	follow_target_status_s follow_target_status{}; // Debugging uORB message for follow target
-	// Members of the uORB message that gets set below
+	// Members of the uORB message that gets set in the code below
 	bool emergency_ascent{false};
 	float gimbal_pitch{NAN};
 	float raw_orbit_angle_setpoint{NAN};
@@ -302,9 +302,8 @@ bool FlightTaskAutoFollowTarget::update()
 	_follow_target_estimator_sub.update(&_follow_target_estimator);
 
 	if (_follow_target_estimator.timestamp > 0 && _follow_target_estimator.valid) {
-		// Update second order target pose filter, with a valid data
+		// Update second order target pose filter to get filtered position and velocity estimate
 		update_target_position_velocity_filter(_follow_target_estimator);
-
 		const Vector3f target_position_filtered = _target_position_velocity_filter.getState();
 		const Vector3f target_velocity_filtered = _target_position_velocity_filter.getRate();
 
@@ -315,9 +314,8 @@ bool FlightTaskAutoFollowTarget::update()
 		// Actual orbit angle measured around the target, which is pointing from target to drone, so M_PI_F difference.
 		const float measured_orbit_angle = matrix::wrap_pi(drone_to_target_heading + M_PI_F);
 
-		// Update the sticks object to fetch recent data
+		// Update the sticks object to fetch recent data and update follow distance, angle and height via RC commands
 		_sticks.checkAndUpdateStickInputs();
-		// If valid stick input is available, update follow distance, angle and height via RC commands
 		if(_sticks.isAvailable()) {
 			update_rc_adjusted_follow_height(_sticks);
 			update_rc_adjusted_follow_distance(_sticks, drone_to_target_vector);
