@@ -219,9 +219,10 @@ protected:
 	/**
 	 * Calculate the tracked target orientation and overwrite the tracked target orientation if necessary
 	 *
-	 * Note : Filtered target velocity is generated via 2nd order reference model filter, which can have overshooting behaviors
-	 * when target stops it's motion suddenly. Which can generate false target velocity output that isn't true to the target's motion.
-	 * To check if the filtered velocity is staying true to target's actual motion, unfiltered velocity needs to be taken into account.
+	 * Note : Filtered target velocity is generated via 2nd order reference model filter can have overshooting behaviors
+	 * when target stops it's motion. This can generate a target velocity output that is opposite direction to where target was heading originally.
+	 * To check if the filtered velocity is staying true to target's actual motion, unfiltered velocity needs to be taken into account. Since during
+	 * overshoot, the unfiltered velocity stays close to 0 (indicating target already stopped), therefore not triggering a target orientation setting.
 	 *
 	 * @param current_target_orientation  Tracked target orientation value that will be over-written with new orientation
 	 * @param target_velocity Filtered Target velocity from which we will calculate target orientation
@@ -303,9 +304,9 @@ protected:
 	float _follow_height{10.0f}; // [m]
 	float _follow_angle_rad{0.0f}; // [rad]
 
-	// Tracked estimate of target's course (where velocity vector is pointing)
+	// Tracked estimate of target's course (where velocity vector is pointing). Initialized as North direction
 	float _target_course_rad{0.0f};
-	// Tracked orbit angle setpoint
+	// Tracked orbit angle setpoint. Initialized as North direction
 	float _orbit_angle_setpoint_rad{0.0f};
 
 	// Angular acceleration limited orbit angle setpoint curve trajectory generator

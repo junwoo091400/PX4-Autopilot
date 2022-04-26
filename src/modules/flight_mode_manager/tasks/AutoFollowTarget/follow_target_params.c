@@ -45,6 +45,19 @@
  */
 
 /**
+ * Dynamic filtering algorithm responsiveness to target movement in Target Estimator
+ *
+ * lower values increase the responsiveness to changing long lat
+ * but also ignore less noise
+ *
+ * @min 0.0
+ * @max 1.0
+ * @decimal 2
+ * @group Follow target
+ */
+PARAM_DEFINE_FLOAT(FLW_TGT_RS, 0.1f);
+
+/**
  * Follow target height
  *
  * The height in meters for following a target
@@ -101,19 +114,6 @@ PARAM_DEFINE_INT32(FLW_TGT_FS, 1);
  * @group Follow target
  */
 PARAM_DEFINE_INT32(FLW_TGT_ALT_M, 0);
-
-/**
- * Dynamic filtering algorithm responsiveness to target movement in Target Estimator
- *
- * lower values increase the responsiveness to changing long lat
- * but also ignore less noise
- *
- * @min 0.0
- * @max 1.0
- * @decimal 2
- * @group Follow target
- */
-PARAM_DEFINE_FLOAT(FLW_TGT_RS, 0.1f);
 
 /**
  * Maximum velocity setting for generating the follow orbit trajectory
