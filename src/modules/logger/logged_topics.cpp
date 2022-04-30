@@ -47,31 +47,25 @@ void LoggedTopics::add_default_topics()
 {
 	/* Sensor related data */
 	// RAW Data
-	add_optional_topic_multi("sensor_accel", 1000, 4);
+	add_optional_topic_multi("sensor_accel", 4);
+	add_optional_topic_multi("sensor_gyro", 4);
+	add_optional_topic_multi("sensor_mag", 4);
 	add_optional_topic_multi("sensor_baro", 1000, 4);
-	add_optional_topic_multi("sensor_gyro", 1000, 4);
-	add_optional_topic_multi("sensor_mag", 1000, 4);
 
 	// Biases
-	add_optional_topic("sensor_correction");
 	add_optional_topic("magnetometer_bias_estimate", 200);
-	add_topic("estimator_baro_bias", 500);
 
 	// Corrected Data
 	add_topic("sensor_combined");
-	add_topic("vehicle_acceleration", 50);
-	add_topic("vehicle_angular_velocity", 20);
-	add_topic("vehicle_magnetometer", 200);
-
-	// Fused global position in WGS84.
-	add_topic("vehicle_global_position", 200);
+	add_topic("vehicle_acceleration");
+	add_topic("vehicle_angular_velocity");
+	add_topic("vehicle_magnetometer");
 
 	// System
 	add_topic("sensor_selection");
-	add_topic("sensors_status_imu", 200);
+	add_topic("sensors_status_imu", 1000);
 	add_topic("vehicle_attitude", 50);
 	add_topic("vehicle_local_position", 100);
-	add_topic("estimator_event_flags", 0);
 	add_topic_multi("vehicle_imu", 500, 4);
 	add_topic_multi("vehicle_imu_status", 1000, 4);
 
@@ -82,33 +76,23 @@ void LoggedTopics::add_default_topics()
 	add_topic("cpuload");
 	add_topic("failure_detector_status", 100);
 	add_topic("parameter_update");
-	add_optional_topic("px4io_status");
-	add_topic("system_power", 500);
-	add_topic("vehicle_status");
-	add_topic("vehicle_status_flags");
+	add_topic("vehicle_status", 1000);
+	add_topic("vehicle_status_flags", 1000);
 
 	// EKF multi topics (currently max 9 estimators)
 #if CONSTRAINED_MEMORY
 	static constexpr uint8_t MAX_ESTIMATOR_INSTANCES = 1;
 #else
 	static constexpr uint8_t MAX_ESTIMATOR_INSTANCES = 6; // artificially limited until PlotJuggler fixed
-	add_optional_topic("estimator_selector_status");
+	add_optional_topic("estimator_selector_status", 1000);
 	add_optional_topic_multi("estimator_attitude", 500, MAX_ESTIMATOR_INSTANCES);
 	add_optional_topic_multi("estimator_global_position", 1000, MAX_ESTIMATOR_INSTANCES);
 	add_optional_topic_multi("estimator_local_position", 500, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_wind", 1000, MAX_ESTIMATOR_INSTANCES);
 #endif
-
-	// always add the first instance
-	add_topic("estimator_innovation_test_ratios", 500);
-	add_topic("estimator_innovation_variances", 500);
-	add_topic("estimator_innovations", 500);
-	add_topic("estimator_sensor_bias", 0);
+	add_topic("estimator_sensor_bias", 1000);
 	add_topic("estimator_states", 1000);
-	add_topic("estimator_status", 200);
-	add_topic("estimator_status_flags", 0);
-	add_topic("estimator_visual_odometry_aligned", 200);
-	add_topic("yaw_estimator_status", 1000);
+	add_topic("estimator_status", 1000);
+	add_topic("estimator_status_flags", 1000);
 
 #ifdef CONFIG_ARCH_BOARD_PX4_SITL
 	add_topic("actuator_controls_virtual_fw");
