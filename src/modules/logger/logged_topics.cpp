@@ -45,87 +45,47 @@ using namespace px4::logger;
 
 void LoggedTopics::add_default_topics()
 {
-	add_topic("action_request");
-	add_topic("actuator_armed");
-	add_topic("actuator_controls_0", 50);
-	add_topic("actuator_controls_1", 100);
-	add_topic("actuator_controls_2", 100);
-	add_topic("actuator_controls_3", 100);
-	add_optional_topic("actuator_controls_status_0", 300);
-	add_topic("airspeed", 1000);
-	add_optional_topic("airspeed_validated", 200);
-	add_optional_topic("autotune_attitude_control_status", 100);
-	add_optional_topic("camera_capture");
-	add_optional_topic("camera_trigger");
-	add_topic("cellular_status", 200);
-	add_topic("commander_state");
-	add_topic("cpuload");
-	add_optional_topic("esc_status", 250);
-	add_topic("failure_detector_status", 100);
-	add_optional_topic("follow_target", 500);
-	add_optional_topic("generator_status");
-	add_optional_topic("gps_dump");
-	add_optional_topic("heater_status");
-	add_topic("home_position");
-	add_topic("hover_thrust_estimate", 100);
-	add_topic("input_rc", 500);
-	add_optional_topic("internal_combustion_engine_status", 10);
-	add_optional_topic("irlock_report", 1000);
-	add_optional_topic("landing_target_pose", 1000);
-	add_optional_topic("magnetometer_bias_estimate", 200);
-	add_topic("manual_control_setpoint", 200);
-	add_topic("manual_control_switches");
-	add_topic("mission_result");
-	add_topic("navigator_mission_item");
-	add_topic("npfg_status", 100);
-	add_topic("offboard_control_mode", 100);
-	add_topic("onboard_computer_status", 10);
-	add_topic("parameter_update");
-	add_topic("position_controller_status", 500);
-	add_topic("position_setpoint_triplet", 200);
-	add_optional_topic("px4io_status");
-	add_topic("radio_status");
-	add_topic("rtl_time_estimate", 1000);
-	add_topic("safety");
-	add_topic("sensor_combined");
+	/* Sensor related data */
+	// RAW Data
+	add_optional_topic_multi("sensor_accel", 1000, 4);
+	add_optional_topic_multi("sensor_baro", 1000, 4);
+	add_optional_topic_multi("sensor_gyro", 1000, 4);
+	add_optional_topic_multi("sensor_mag", 1000, 4);
+
+	// Biases
 	add_optional_topic("sensor_correction");
-	add_optional_topic("sensor_gyro_fft", 50);
+	add_optional_topic("magnetometer_bias_estimate", 200);
+	add_topic("estimator_baro_bias", 500);
+
+	// Corrected Data
+	add_topic("sensor_combined");
+	add_topic("vehicle_acceleration", 50);
+	add_topic("vehicle_angular_velocity", 20);
+	add_topic("vehicle_magnetometer", 200);
+
+	// Fused global position in WGS84.
+	add_topic("vehicle_global_position", 200);
+
+	// System
 	add_topic("sensor_selection");
 	add_topic("sensors_status_imu", 200);
-	add_topic("system_power", 500);
-	add_optional_topic("takeoff_status", 1000);
-	add_optional_topic("tecs_status", 200);
-	add_topic("trajectory_setpoint", 200);
-	add_topic("transponder_report");
-	add_topic("vehicle_acceleration", 50);
-	add_topic("vehicle_air_data", 200);
-	add_topic("vehicle_angular_velocity", 20);
 	add_topic("vehicle_attitude", 50);
-	add_topic("vehicle_attitude_setpoint", 50);
-	add_topic("vehicle_command");
-	add_topic("vehicle_constraints", 1000);
-	add_topic("vehicle_control_mode");
-	add_topic("vehicle_global_position", 200);
-	add_topic("vehicle_gps_position", 500);
-	add_topic("vehicle_land_detected");
 	add_topic("vehicle_local_position", 100);
-	add_topic("vehicle_local_position_setpoint", 100);
-	add_topic("vehicle_magnetometer", 200);
-	add_topic("vehicle_rates_setpoint", 20);
-	add_topic("vehicle_roi", 1000);
+	add_topic("estimator_event_flags", 0);
+	add_topic_multi("vehicle_imu", 500, 4);
+	add_topic_multi("vehicle_imu_status", 1000, 4);
+
+	// Analytics
+	add_optional_topic("sensor_gyro_fft", 50);
+
+	/* House Keeping Topics */
+	add_topic("cpuload");
+	add_topic("failure_detector_status", 100);
+	add_topic("parameter_update");
+	add_optional_topic("px4io_status");
+	add_topic("system_power", 500);
 	add_topic("vehicle_status");
 	add_topic("vehicle_status_flags");
-	add_optional_topic("vtol_vehicle_status", 200);
-	add_topic("wind", 1000);
-
-	// multi topics
-	add_optional_topic_multi("actuator_outputs", 100, 3);
-	add_optional_topic_multi("airspeed_wind", 1000, 4);
-	add_optional_topic_multi("control_allocator_status", 200, 2);
-	add_optional_topic_multi("rate_ctrl_status", 200, 2);
-	add_optional_topic_multi("sensor_hygrometer", 500, 4);
-	add_optional_topic_multi("rpm", 200);
-	add_optional_topic_multi("telemetry_status", 1000, 4);
 
 	// EKF multi topics (currently max 9 estimators)
 #if CONSTRAINED_MEMORY
@@ -140,49 +100,15 @@ void LoggedTopics::add_default_topics()
 #endif
 
 	// always add the first instance
-	add_topic("estimator_baro_bias", 500);
-	add_topic("estimator_event_flags", 0);
-	add_topic("estimator_gps_status", 1000);
 	add_topic("estimator_innovation_test_ratios", 500);
 	add_topic("estimator_innovation_variances", 500);
 	add_topic("estimator_innovations", 500);
-	add_topic("estimator_optical_flow_vel", 200);
 	add_topic("estimator_sensor_bias", 0);
 	add_topic("estimator_states", 1000);
 	add_topic("estimator_status", 200);
 	add_topic("estimator_status_flags", 0);
 	add_topic("estimator_visual_odometry_aligned", 200);
 	add_topic("yaw_estimator_status", 1000);
-
-	add_optional_topic_multi("estimator_baro_bias", 500, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_event_flags", 0, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_gps_status", 1000, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_innovation_test_ratios", 500, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_innovation_variances", 500, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_innovations", 500, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_optical_flow_vel", 200, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_sensor_bias", 0, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_states", 1000, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_status", 200, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_status_flags", 0, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("estimator_visual_odometry_aligned", 200, MAX_ESTIMATOR_INSTANCES);
-	add_optional_topic_multi("yaw_estimator_status", 1000, MAX_ESTIMATOR_INSTANCES);
-
-	// log all raw sensors at minimal rate (at least 1 Hz)
-	add_topic_multi("battery_status", 200, 2);
-	add_topic_multi("differential_pressure", 1000, 2);
-	add_topic_multi("distance_sensor", 1000, 2);
-	add_topic_multi("optical_flow", 1000, 1);
-	add_optional_topic_multi("sensor_accel", 1000, 4);
-	add_optional_topic_multi("sensor_baro", 1000, 4);
-	add_topic_multi("sensor_gps", 1000, 2);
-	add_topic_multi("sensor_gnss_relative", 1000, 1);
-	add_optional_topic("pps_capture", 1000);
-	add_optional_topic_multi("sensor_gyro", 1000, 4);
-	add_optional_topic_multi("sensor_mag", 1000, 4);
-	add_topic_multi("vehicle_imu", 500, 4);
-	add_topic_multi("vehicle_imu_status", 1000, 4);
-	add_optional_topic_multi("vehicle_magnetometer", 500, 4);
 
 #ifdef CONFIG_ARCH_BOARD_PX4_SITL
 	add_topic("actuator_controls_virtual_fw");
