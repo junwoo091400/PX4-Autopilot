@@ -42,7 +42,7 @@
 #include <matrix/matrix/math.hpp>
 #include <px4_platform_common/defines.h>
 
-#include "lm_fit.hpp"
+#include "lib/lm_fitting/lm_fit.hpp"
 #include "mag_calibration_test_data.h"
 
 using matrix::Vector3f;

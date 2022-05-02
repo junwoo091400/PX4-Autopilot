@@ -39,18 +39,17 @@ px4_add_module(
 	MAIN commander
 	COMPILE_FLAGS
 	SRCS
-		accelerometer_calibration.cpp
-		airspeed_calibration.cpp
-		baro_calibration.cpp
-		calibration_routines.cpp
+		sensor_calibration/accelerometer_calibration.cpp
+		sensor_calibration/airspeed_calibration.cpp
+		sensor_calibration/baro_calibration.cpp
+		sensor_calibration/calibration_routines.cpp
 		Commander.cpp
-		commander_helper.cpp
+		sensor_calibration/commander_helper.cpp
 		esc_calibration.cpp
 		factory_calibration_storage.cpp
-		gyro_calibration.cpp
+		sensor_calibration/gyro_calibration.cpp
 		level_calibration.cpp
-		lm_fit.cpp
-		mag_calibration.cpp
+		sensor_calibration/mag_calibration.cpp
 		rc_calibration.cpp
 		Safety.cpp
 		state_machine_helper.cpp
@@ -66,6 +65,7 @@ px4_add_module(
 		HealthFlags
 		sensor_calibration
 		world_magnetic_model
+		lm_fit
 	)
 
 if(PX4_TESTING)

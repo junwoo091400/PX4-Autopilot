@@ -40,7 +40,7 @@
 #include "mag_calibration.h"
 #include "commander_helper.h"
 #include "calibration_routines.h"
-#include "lm_fit.hpp"
+#include "lib/lm_fitting/lm_fit.hpp"
 #include "calibration_messages.h"
 #include "factory_calibration_storage.h"
 
