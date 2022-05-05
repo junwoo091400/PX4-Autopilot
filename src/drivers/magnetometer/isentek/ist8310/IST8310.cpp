@@ -106,14 +106,21 @@ IST8310::print_cross_axis_info()
 
 int IST8310::probe()
 {
-	const uint8_t WAI = RegisterRead(Register::WAI);
+	_retries = 1;
 
-	if (WAI != Device_ID) {
-		DEVICE_DEBUG("unexpected WAI 0x%02x", WAI);
-		return PX4_ERROR;
+	for (int i = 0; i < 10; i++) {
+		const uint8_t WAI = RegisterRead(Register::WAI);
+
+		if (WAI == Device_ID) {
+			return PX4_OK;
+
+		} else {
+			PX4_DEBUG("unexpected WAI 0x%02x", WAI);
+			px4_usleep(10);
+		}
 	}
 
-	return PX4_OK;
+	return PX4_ERROR;
 }
 
 void IST8310::RunImpl()
