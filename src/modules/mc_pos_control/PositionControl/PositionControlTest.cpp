@@ -80,7 +80,6 @@ public:
 		_position_control.setVelocityLimits(1.f, 1.f, 1.f);
 		_position_control.setThrustLimits(0.1f, MAXIMUM_THRUST);
 		_position_control.setHorizontalThrustMargin(HORIZONTAL_THRUST_MARGIN);
-		_position_control.setHorizontalThrustMargin(0.3f);
 		_position_control.setTiltLimit(1.f);
 		_position_control.setHoverThrust(.5f);
 
