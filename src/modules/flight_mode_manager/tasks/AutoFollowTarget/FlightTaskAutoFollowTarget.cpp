@@ -116,7 +116,7 @@ void FlightTaskAutoFollowTarget::updateParams() {
 	if (!matrix::isEqualF(follow_height_prev, _param_flw_tgt_ht.get())) {
 		_follow_height = _param_flw_tgt_ht.get();
 	}
-	if (!follow_perspective_prev != _param_flw_tgt_fp.get()) {
+	if (follow_perspective_prev != _param_flw_tgt_fp.get()) {
 		_follow_angle_rad = convertFollowPerspectiveToRadians((kFollowPerspective)_param_flw_tgt_fp.get());
 	}
 }
@@ -357,7 +357,14 @@ bool FlightTaskAutoFollowTarget::update()
 
 		// Yaw setpoint
 		if (drone_to_target_vector.longerThan(MINIMUM_DISTANCE_TO_TARGET_FOR_YAW_CONTROL)) {
-			_yaw_setpoint = drone_to_target_heading;
+			if (_param_flw_tgt_yaw_m.get()) {
+				const Vector2f position_setpoint_to_target_vector  = Vector2f(target_position_filtered.xy()) - Vector2f(_position_setpoint.xy());
+				const float position_setpoint_to_target_heading = atan2f(position_setpoint_to_target_vector(1), position_setpoint_to_target_vector(0));
+				_yaw_setpoint = position_setpoint_to_target_heading;
+			}
+			else {
+				_yaw_setpoint = drone_to_target_heading;
+			}
 		}
 
 		// Set Gimbal pitch to track target in the center of the view

@@ -122,3 +122,7 @@ PARAM_DEFINE_INT32(FLW_TGT_ALT_M, 0);
  * @group Follow target
  */
 PARAM_DEFINE_FLOAT(FLW_TGT_MAX_VEL, 5.0f);
+
+// If true (not 0), yaw setpoint will be calculated from position setpoint to estimated target position.
+// Otherwise, yaw setpoint will be calculated from actual position to target position.
+PARAM_DEFINE_INT32(FLW_TGT_YAW_M, 0);
