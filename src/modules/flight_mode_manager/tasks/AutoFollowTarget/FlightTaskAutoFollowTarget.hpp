@@ -335,7 +335,8 @@ protected:
 		(ParamFloat<px4::params::FLW_TGT_DST>) _param_flw_tgt_dst,
 		(ParamInt<px4::params::FLW_TGT_FP>) _param_flw_tgt_fp,
 		(ParamInt<px4::params::FLW_TGT_ALT_M>) _param_flw_tgt_alt_m,
-		(ParamFloat<px4::params::FLW_TGT_MAX_VEL>) _param_flw_tgt_max_vel
+		(ParamFloat<px4::params::FLW_TGT_MAX_VEL>) _param_flw_tgt_max_vel,
+		(ParamFloat<px4::params::FLW_TGT_SO_R>) _param_flw_tgt_so_r
 	)
 
 	uORB::Subscription _follow_target_estimator_sub{ORB_ID(follow_target_estimator)};

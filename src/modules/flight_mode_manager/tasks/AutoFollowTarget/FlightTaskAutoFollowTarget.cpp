@@ -123,6 +123,10 @@ void FlightTaskAutoFollowTarget::updateParams()
 	if (follow_perspective_prev != _param_flw_tgt_fp.get()) {
 		_follow_angle_rad = convertFollowPerspectiveToRadians((kFollowPerspective)_param_flw_tgt_fp.get());
 	}
+
+	// Update the natural frequency value from the param [rad/s]
+	_target_position_velocity_filter.setParameters(_param_flw_tgt_so_r.get(),
+			TARGET_POS_VEL_FILTER_DAMPING_RATIO);
 }
 
 void FlightTaskAutoFollowTarget::updateTargetPositionVelocityFilter(const follow_target_estimator_s
