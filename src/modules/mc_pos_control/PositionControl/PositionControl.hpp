@@ -44,6 +44,8 @@
 #include <uORB/topics/trajectory_setpoint.h>
 #include <uORB/topics/vehicle_attitude_setpoint.h>
 #include <uORB/topics/vehicle_local_position_setpoint.h>
+#include <uORB/topics/manual_control_setpoint.h>
+#include <uORB/Subscription.hpp>
 
 struct PositionControlStates {
 	matrix::Vector3f position;
@@ -183,7 +185,7 @@ public:
 	 * It needs to be executed by the attitude controller to achieve velocity and position tracking.
 	 * @param attitude_setpoint reference to struct to fill up
 	 */
-	void getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint) const;
+	void getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_setpoint, bool landed);
 
 	/**
 	 * All setpoints are set to NAN (uncontrolled). Timestampt zero.
@@ -233,4 +235,8 @@ private:
 	matrix::Vector3f _thr_sp; /**< desired thrust */
 	float _yaw_sp{}; /**< desired heading */
 	float _yawspeed_sp{}; /** desired yaw-speed */
+	uORB::Subscription _manual_control_setpoint_sub{ORB_ID(manual_control_setpoint)};	/**< manual control setpoint subscription */
+	float _roll_angle{0.f};
+	float _pitch_angle{0.f};
+	float _dt{0.f};
 };
