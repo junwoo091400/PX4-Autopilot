@@ -99,6 +99,18 @@ __EXPORT void		param_init(void);
 __EXPORT param_t	param_find(const char *name);
 
 /**
+ * Look up a parameter with a format string and arguments in snprintf fashion
+ *
+ * @param format	The format of the param string we are searching for
+ * @param ... 		Arguments that will form the parameter string we are searching for
+ *
+ * @return		A handle to the parameter, or PARAM_INVALID if the parameter does not exist.
+ *			This call will also set the parameter as "used" in the system, which is used
+ *			to e.g. show the parameter via the RC interface
+ */
+__EXPORT param_t	param_find(const char *format ...);
+
+/**
  * Look up a parameter by name.
  *
  * @param name		The canonical name of the parameter being looked up.

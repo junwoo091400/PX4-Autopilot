@@ -310,6 +310,15 @@ param_t param_find(const char *name)
 	return param_find_internal(name, true);
 }
 
+param_t	param_find(const char *format ...)
+{
+	static char param_name[17];
+	if (snprintf(param_name, sizeof(param_name), format, __VA_ARGS__)) {
+		return param_find(param_name);
+	}
+	return PARAM_INVALID;
+}
+
 param_t param_find_no_notification(const char *name)
 {
 	return param_find_internal(name, false);
