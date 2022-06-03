@@ -325,6 +325,14 @@ bool FlightTaskAuto::_evaluateTriplets()
 
 	// Check if triplet is valid. There must be at least a valid altitude.
 
+	static position_setpoint_triplet_s local_triplet_copy;
+
+	if (!isEqualF(local_triplet_copy.current.lon, _sub_triplet_setpoint.get().current.lon)) {
+		local_triplet_copy = _sub_triplet_setpoint.get();
+		printf("_evaluateTriplets(): Previous: %f Current: %f Next: %f\n", local_triplet_copy.previous.lon,
+		       local_triplet_copy.current.lon, local_triplet_copy.next.lon);
+	}
+
 	if (!_sub_triplet_setpoint.get().current.valid || !PX4_ISFINITE(_sub_triplet_setpoint.get().current.alt)) {
 		// Best we can do is to just set all waypoints to current state
 		_prev_prev_wp = _triplet_prev_wp = _triplet_target = _triplet_next_wp = _position;

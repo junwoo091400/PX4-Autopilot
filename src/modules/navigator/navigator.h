@@ -118,6 +118,14 @@ public:
 	 */
 	void load_fence_from_file(const char *filename);
 
+	/**
+	 * @brief Publish a given specified vehicle command
+	 *
+	 * Sets the target_component of the vehicle command accordingly depending on the
+	 * vehicle command value (e.g. For Camera control, sets target system component id)
+	 *
+	 * @param vcmd Vehicle command to execute
+	 */
 	void publish_vehicle_cmd(vehicle_command_s *vcmd);
 
 	/**
@@ -331,9 +339,10 @@ private:
 	int _mission_sub{-1};
 	int _vehicle_status_sub{-1};
 
-	uORB::SubscriptionData<position_controller_status_s>	_position_controller_status_sub{ORB_ID(position_controller_status)};
-
 	uORB::SubscriptionInterval _parameter_update_sub{ORB_ID(parameter_update), 1_s};
+	uORB::SubscriptionData<position_controller_status_s>	_position_controller_status_sub{ORB_ID(position_controller_status)};
+	uORB::SubscriptionData<vehicle_command_ack_s> _vehicle_cmd_ack_sub{ORB_ID(vehicle_command_ack)};	/**< vehicle command acks (onboard and offboard) */
+	uORB::SubscriptionData<vehicle_command_s> _vehicle_command_sub{ORB_ID(vehicle_command)};		/**< vehicle commands (onboard and offboard) */
 
 	uORB::Subscription _global_pos_sub{ORB_ID(vehicle_global_position)};	/**< global position subscription */
 	uORB::Subscription _gps_pos_sub{ORB_ID(vehicle_gps_position)};		/**< gps position subscription */
@@ -373,10 +382,9 @@ private:
 	perf_counter_t	_loop_perf;			/**< loop performance counter */
 
 	Geofence	_geofence;			/**< class that handles the geofence */
-
 	GeofenceBreachAvoidance _gf_breach_avoidance;
-
 	hrt_abstime _last_geofence_check = 0;
+	bool _have_geofence_position_data{false};
 
 	bool		_geofence_violation_warning_sent{false};	/**< prevents spaming to mavlink */
 	bool		_can_loiter_at_sp{false};			/**< flags if current position SP can be used to loiter */
@@ -442,8 +450,7 @@ private:
 		(ParamFloat<px4::params::NAV_TRAFF_A_RADU>) _param_nav_traff_a_radu,	/**< avoidance Distance Unmanned*/
 		(ParamFloat<px4::params::NAV_TRAFF_A_RADM>) _param_nav_traff_a_radm,	/**< avoidance Distance Manned*/
 
-		// non-navigator parameters
-		// Mission (MIS_*)
+		// non-navigator parameters: Mission (MIS_*)
 		(ParamFloat<px4::params::MIS_LTRMIN_ALT>)  _param_mis_ltrmin_alt,
 		(ParamFloat<px4::params::MIS_TAKEOFF_ALT>) _param_mis_takeoff_alt,
 		(ParamBool<px4::params::MIS_TAKEOFF_REQ>)  _param_mis_takeoff_req,

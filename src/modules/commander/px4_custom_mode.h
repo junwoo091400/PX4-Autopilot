@@ -33,8 +33,10 @@
 
 /**
  * @file px4_custom_mode.h
- * PX4 custom flight modes
  *
+ * PX4 custom flight modes that is used as part of the "MAV_CMD_DO_SET_MODE" MAVLink message
+ * definition. When the mode / custom-mode / custom-sub-mode are set in the message, the
+ * following enums define which mode each numbers would correspond to.
  */
 
 #ifndef PX4_CUSTOM_MODE_H_

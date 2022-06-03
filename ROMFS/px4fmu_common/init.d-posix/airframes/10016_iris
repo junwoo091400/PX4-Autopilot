@@ -7,7 +7,7 @@
 # @maintainer Julian Oes <julian@oes.ch>
 #
 
-. ${R}etc/init.d/rc.mc_defaults
+# . ${R}etc/init.d/rc.mc_defaults
 
 
 param set-default CA_AIRFRAME 0
@@ -30,4 +30,3 @@ param set-default PWM_MAIN_FUNC1 101
 param set-default PWM_MAIN_FUNC2 102
 param set-default PWM_MAIN_FUNC3 103
 param set-default PWM_MAIN_FUNC4 104
-

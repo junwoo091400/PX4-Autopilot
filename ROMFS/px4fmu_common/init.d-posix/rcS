@@ -279,3 +279,5 @@ fi
 
 mavlink boot_complete
 replay trystart
+
+payload_deliverer start

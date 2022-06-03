@@ -70,24 +70,15 @@ MissionBlock::MissionBlock(Navigator *navigator) :
 }
 
 bool
-MissionBlock::is_mission_item_reached()
+MissionBlock::is_mission_item_reached_or_completed()
 {
-	/* handle non-navigation or indefinite waypoints */
+	const hrt_abstime now = hrt_absolute_time();
 
-	hrt_abstime now = hrt_absolute_time();
-
+	// Handle indefinite waypoints and action commands
 	switch (_mission_item.nav_cmd) {
+
+	// Action Commands that doesn't have timeout completes instantaneously
 	case NAV_CMD_DO_SET_SERVO:
-		return true;
-
-	case NAV_CMD_LAND: /* fall through */
-	case NAV_CMD_VTOL_LAND:
-		return _navigator->get_land_detected()->landed;
-
-	case NAV_CMD_IDLE: /* fall through */
-	case NAV_CMD_LOITER_UNLIMITED:
-		return false;
-
 	case NAV_CMD_DO_LAND_START:
 	case NAV_CMD_DO_TRIGGER_CONTROL:
 	case NAV_CMD_DO_DIGICAM_CONTROL:
@@ -113,6 +104,15 @@ MissionBlock::is_mission_item_reached()
 	case NAV_CMD_DO_CHANGE_SPEED:
 	case NAV_CMD_DO_SET_HOME:
 		return true;
+
+	// Indefinite Waypoints
+	case NAV_CMD_LAND: /* fall through */
+	case NAV_CMD_VTOL_LAND:
+		return _navigator->get_land_detected()->landed;
+
+	case NAV_CMD_IDLE: /* fall through */
+	case NAV_CMD_LOITER_UNLIMITED:
+		return false;
 
 	case NAV_CMD_DO_VTOL_TRANSITION:
 
@@ -146,11 +146,66 @@ MissionBlock::is_mission_item_reached()
 			_time_wp_reached = now;
 		}
 
+		break;
+
+	case NAV_CMD_DO_WINCH: {
+			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) * 1E-6f; // Convert Microseconds into seconds
+			const float definite_execution_time_s = _mission_item.params[5];
+			const float payload_deploy_timeout_s = _mission_item.params[4];
+
+			if (payload_deploy_elasped_time_s < definite_execution_time_s) {
+				// Require definite execution time as minimum time required to exit deployment mission item
+				return false;
+			}
+
+			if (_payload_deploy_ack_successful) {
+				PX4_INFO("Winch Deploy Ack received! Resuming mission");
+				_payload_deploy_ack_successful = false;
+				return true;
+
+			} else if (payload_deploy_elasped_time_s > payload_deploy_timeout_s) {
+				PX4_INFO("Winch Deploy Timed out, resuming mission!");
+				_payload_deployed_time = 0;
+				return true;
+
+			}
+
+			// We are still waiting for the acknowledgement / execution of deploy
+			return false;
+		}
+
+	case NAV_CMD_DO_GRIPPER: {
+			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) * 1E-6f; // Convert Microseconds into seconds
+			const float definite_execution_time_s = _mission_item.params[3];
+			const float payload_deploy_timeout_s = _mission_item.params[2];
+
+			if (payload_deploy_elasped_time_s < definite_execution_time_s) {
+				// Require definite execution time as minimum time required to exit deployment mission item
+				return false;
+			}
+
+			if (_payload_deploy_ack_successful) {
+				PX4_INFO("Gripper Deploy Ack received! Resuming mission");
+				_payload_deploy_ack_successful = false;
+				return true;
+
+			} else if (payload_deploy_elasped_time_s > payload_deploy_timeout_s) {
+				PX4_INFO("Gripper Deploy Timed out, resuming mission!");
+				_payload_deployed_time = 0;
+				return true;
+
+			}
+
+			// We are still waiting for the acknowledgement / execution of deploy
+			return false;
+		}
+
 	default:
 		/* do nothing, this is a 3D waypoint */
 		break;
 	}
 
+	// Update the 'waypoint position reached' status
 	if (!_navigator->get_land_detected()->landed && !_waypoint_position_reached) {
 
 		float dist = -1.0f;
@@ -198,13 +253,13 @@ MissionBlock::is_mission_item_reached()
 
 		} else if (_mission_item.nav_cmd == NAV_CMD_TAKEOFF
 			   && _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROVER) {
-			/* for takeoff mission items use the parameter for the takeoff acceptance radius */
+			// Accept takeoff waypoint to be reached if the distance in 2D plane is within acceptance radius
 			if (dist_xy >= 0.0f && dist_xy <= _navigator->get_acceptance_radius()) {
 				_waypoint_position_reached = true;
 			}
 
 		} else if (_mission_item.nav_cmd == NAV_CMD_TAKEOFF) {
-			/* for takeoff mission items use the parameter for the takeoff acceptance radius */
+			// For takeoff mission items use the parameter for the takeoff acceptance radius
 			if (dist >= 0.0f && dist <= _navigator->get_acceptance_radius()
 			    && dist_z <= _navigator->get_altitude_acceptance_radius()) {
 				_waypoint_position_reached = true;
@@ -373,8 +428,7 @@ MissionBlock::is_mission_item_reached()
 		}
 	}
 
-	/* Check if the requested yaw setpoint is reached (only for rotary wing flight). */
-
+	// Update the 'waypoint position reached' status (only for rotary wing flight)
 	if (_waypoint_position_reached && !_waypoint_yaw_reached) {
 
 		if (_navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
@@ -410,7 +464,7 @@ MissionBlock::is_mission_item_reached()
 		}
 	}
 
-	/* Once the waypoint and yaw setpoint have been reached we can start the loiter time countdown */
+	// Handle Loiter/Delay Timeout if the waypoint position and yaw setpoint got reached
 	if (_waypoint_position_reached && _waypoint_yaw_reached) {
 
 		bool time_inside_reached = false;
@@ -533,6 +587,21 @@ MissionBlock::issue_command(const mission_item_s &item)
 
 		_actuator_pub.publish(actuators);
 
+	} else if (item.nav_cmd == NAV_CMD_DO_WINCH ||
+		   item.nav_cmd == NAV_CMD_DO_GRIPPER) {
+		// Initiate Payload Deployment
+		vehicle_command_s vcmd = {};
+		vcmd.command = item.nav_cmd;
+		vcmd.param1 = item.params[0];
+		vcmd.param2 = item.params[1];
+		vcmd.param3 = item.params[2];
+		vcmd.param4 = item.params[3];
+		vcmd.param5 = static_cast<double>(item.params[4]);
+		vcmd.param6 = static_cast<double>(item.params[5]);
+		_navigator->publish_vehicle_cmd(&vcmd);
+		_payload_deploy_ack_successful = false;
+		_payload_deployed_time = hrt_absolute_time();
+
 	} else {
 
 		// This is to support legacy DO_MOUNT_CONTROL as part of a mission.
@@ -540,8 +609,8 @@ MissionBlock::issue_command(const mission_item_s &item)
 			_navigator->acquire_gimbal_control();
 		}
 
-		// we're expecting a mission command item here so assign the "raw" inputs to the command
-		// (MAV_FRAME_MISSION mission item)
+		// Mission item's NAV_CMD enums directly map to the according vehicle command
+		// So set the raw value directly (MAV_FRAME_MISSION mission item)
 		vehicle_command_s vcmd = {};
 		vcmd.command = item.nav_cmd;
 		vcmd.param1 = item.params[0];
@@ -576,6 +645,15 @@ MissionBlock::get_time_inside(const mission_item_s &item) const
 
 		// a negative time inside would be invalid
 		return math::max(item.time_inside, 0.0f);
+
+	} else if (item.nav_cmd == NAV_CMD_DO_WINCH) {
+		// DO_WINCH doesn't use the 'time_inside' field, as the timeout is not the
+		// first parameter of the MAVLink message for MAV_CMD_DO_WINCH
+		return math::max(item.params[4], 0.0f);
+
+	} else if (item.nav_cmd == NAV_CMD_DO_GRIPPER) {
+		return math::max(item.params[2], 0.0f);
+
 	}
 
 	return 0.0f;
@@ -609,9 +687,17 @@ MissionBlock::item_contains_marker(const mission_item_s &item)
 bool
 MissionBlock::mission_item_to_position_setpoint(const mission_item_s &item, position_setpoint_s *sp)
 {
-	/* don't change the setpoint for non-position items */
+	/* don't change the setpoint for non-position items except certain exceptions */
 	if (!item_contains_position(item)) {
-		return false;
+		switch (item.nav_cmd) {
+		// For Paylod Deployment, don't modify position setpoint
+		case NAV_CMD_DO_WINCH:
+			return true;
+
+		// All the other non-positional mission items don't set the position
+		default:
+			return false;
+		}
 	}
 
 	sp->lat = item.lat;
