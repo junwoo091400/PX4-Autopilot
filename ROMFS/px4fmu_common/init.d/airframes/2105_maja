@@ -21,6 +21,7 @@
 #
 # @board px4_fmu-v2 exclude
 # @board bitcraze_crazyflie exclude
+# @board bitcraze_crazyflie21 exclude
 #
 
 . ${R}etc/init.d/rc.fw_defaults

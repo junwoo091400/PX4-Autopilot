@@ -6,7 +6,10 @@
 # @class Copter
 #
 # @maintainer Lorenz Meier <lorenz@px4.io>
+#
 # @board px4_fmu-v2 exclude
+# @board px4_fmu-v6x exclude
+# @board holybro_kakutef7 exclude
 #
 
 . ${R}etc/init.d/rc.mc_defaults
