@@ -10,8 +10,13 @@
 # @maintainer ThunderFly s.r.o.
 #
 # @board px4_fmu-v2 exclude
+# @board px4_fmu-v3 exclude
+# @board px4_fmu-v4 exclude
+# @board px4_fmu-v4pro exclude
+# @board px4_fmu-v5 exclude
+# @board px4_fmu-v5x exclude
+# @board px4_fmu-v6x exclude
 # @board bitcraze_crazyflie exclude
-#
 
 . ${R}etc/init.d/rc.balloon_defaults
 
