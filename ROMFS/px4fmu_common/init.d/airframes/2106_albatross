@@ -20,6 +20,7 @@
 #
 # @maintainer Andreas Antener <andreas@uaventure.com>
 #
+# @board px4_fmu-v2 exclude
 # @board bitcraze_crazyflie exclude
 #
 
