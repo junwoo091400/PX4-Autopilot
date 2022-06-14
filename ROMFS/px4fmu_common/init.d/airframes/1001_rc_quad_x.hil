@@ -8,9 +8,14 @@
 # @maintainer Lorenz Meier <lorenz@px4.io>
 #
 # @board px4_fmu-v2 exclude
+# @board px4_fmu-v5 exclude
+# @board px4_fmu-v5x exclude
 # @board px4_fmu-v6x exclude
 # @board holybro_kakutef7 exclude
-#
+# @board cubepilot_cubeorange exclude
+# @board bitcraze_crazyflie exclude
+# @board bitcraze_crazyflie21 exclude
+# @board diatone_mamba-f405-mk2 exclude
 
 . ${R}etc/init.d/rc.mc_defaults
 
