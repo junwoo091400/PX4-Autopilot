@@ -779,6 +779,10 @@ if "__main__" == __name__:
 
     graph.build(source_paths, path_blacklist=path_blacklist, use_topic_pubsub_union=args.use_topic_union, merge_depends=args.merge_depends)
 
+    print('uORB Graph Module, Topic count:')
+    print(len(graph._found_modules))
+    print(len(graph._print_topics))
+
     if args.output == 'json':
         output_json = OutputJSON(graph)
         output_json.write(args.file+'.json')
