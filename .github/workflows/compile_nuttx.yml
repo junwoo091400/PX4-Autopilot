@@ -1,4 +1,4 @@
-name: Nuttx Targets
+name: Nuttx Targets, Hard Copy Test!
 
 on:
   push:
