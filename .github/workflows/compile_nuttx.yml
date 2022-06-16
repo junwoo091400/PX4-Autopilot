@@ -3,7 +3,7 @@ name: Nuttx Targets
 on:
   push:
     branches:
-    - 'master'
+    - '*'
   pull_request:
     branches:
     - '*'
