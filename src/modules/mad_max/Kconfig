@@ -1,0 +1,5 @@
+menuconfig MODULES_MAD_MAX
+	bool "mad_max"
+	default n
+	---help---
+		Enable mad_max module, an simple example module used for the PX4 Fundamentals Workshop during Dev Summit 2022
