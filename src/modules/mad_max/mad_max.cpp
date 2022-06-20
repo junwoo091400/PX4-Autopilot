@@ -7,34 +7,37 @@ MadMax::MadMax()
 
 void MadMax::run()
 {
-	static vehicle_local_position v_position{};
-	hrt_abstime now = hrt_absolute_time();
+	while (!should_exit())
+	{
+		static vehicle_local_position v_position{};
+		hrt_abstime now = hrt_absolute_time();
 
-	// New topic data has been received
-	if (_vehicle_local_position_sub.update(&v_position)) {
-		const Vector2f vehicle_xy_vel{v_position.vx, v_position.vy};
-		const float vehicle_speed_m_s = vehicle_xy_vel.norm();
-		
-		if (vehicle_speed_m_s < 1.0f) {
-			PX4_INFO("Come on! We are too slow!");
+		// New topic data has been received
+		if (_vehicle_local_position_sub.update(&v_position)) {
+			const Vector2f vehicle_xy_vel{v_position.vx, v_position.vy};
+			const float vehicle_speed_m_s = vehicle_xy_vel.norm();
 
-		} else if (vehicle_speed_m_s < 3.0f) {
-			PX4_INFO("We're getting there!");
-		
-		} else if (vehicle_speed_m_s < 5.0f) {
-			PX4_INFO("We're getting there!");
-		
-		} else if (vehicle_speed_m_s < 10.0f) {
-			PX4_INFO("Let's goooo!!");
-		
-		} else {
-			PX4_INFO("Wait... that's a bit too fast..?!");
+			if (vehicle_speed_m_s < 1.0f) {
+				PX4_INFO("Come on! We are too slow!");
 
+			} else if (vehicle_speed_m_s < 3.0f) {
+				PX4_INFO("We're getting there!");
+
+			} else if (vehicle_speed_m_s < 5.0f) {
+				PX4_INFO("We're getting there!");
+
+			} else if (vehicle_speed_m_s < 10.0f) {
+				PX4_INFO("Let's goooo!!");
+
+			} else {
+				PX4_INFO("Wait... that's a bit too fast..?!");
+
+			}
 		}
-	}
 
-	// Sleep for 100 milliseconds to run the print statement at 10Hz max
-	px4_usleep(100_ms);
+		// Sleep for 100 milliseconds to run the print statement at 10Hz max
+		px4_usleep(100_ms);
+	}
 }
 
 // ModuleBase related functions (below)

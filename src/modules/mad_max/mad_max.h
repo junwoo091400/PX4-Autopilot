@@ -1,7 +1,7 @@
 /**
  * @file mad_max.h
  * @author Junwoo Hwang (junwoo091400@gmail.com)
- * 
+ *
  * Simple module that prints out different messages depending on the current
  * speed of the vehicle.
  *
@@ -21,19 +21,19 @@
 extern "C" __EXPORT int mad_max_main(int argc, char *argv[]);
 
 class MadMax : public ModuleBase<MadMax>
-
+{
 public:
 	// Default Constructor
 	MadMax();
 
 	// Methods requried by the ModuleBase inheritance
 	static int task_spawn(int argc, char *argv[]);
-	static PayloadDrop *instantiate(int argc, char *argv[]);
+	static MadMax *instantiate(int argc, char *argv[]);
 	static int custom_command(int argc, char *argv[]);
 	static int print_usage(const char *reason = nullptr);
 
 	/**
-	 * @brief Main run functtion that runs on a thread
+	 * @brief Main run function that runs on a thread
 	 */
 	void run() override;
 
