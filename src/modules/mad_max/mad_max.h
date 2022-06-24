@@ -8,12 +8,20 @@
  * The inspiration comes from MAD-MAX, where they love going speedy ;)
  *
  */
+
+// For Hardware Time related functions like hrt_abs_time()
 #include <drivers/drv_hrt.h>
+
+// General Math library functions (e.g. Matrix library, etc)
+#include <mathlib/mathlib.h>
 
 #include <px4_platform_common/module.h>
 
 #include <uORB/Subscription.hpp>
 #include <uORB/topics/vehicle_local_position.h>
+
+using namespace matrix;		// To use Vector2f
+using namespace time_literals;	// To use time literals like "100_ms"
 
 /**
  * Module start / stop handling function that gets called by NuttX

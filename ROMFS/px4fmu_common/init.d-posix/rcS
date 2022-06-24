@@ -272,3 +272,6 @@ fi
 
 mavlink boot_complete
 replay trystart
+
+# Start the Mad Max Module!
+mad_max start

@@ -9,8 +9,8 @@ void MadMax::run()
 {
 	while (!should_exit())
 	{
-		static vehicle_local_position v_position{};
-		hrt_abstime now = hrt_absolute_time();
+		static vehicle_local_position_s v_position{};
+		//hrt_abstime now = hrt_absolute_time();
 
 		// New topic data has been received
 		if (_vehicle_local_position_sub.update(&v_position)) {
@@ -35,8 +35,8 @@ void MadMax::run()
 			}
 		}
 
-		// Sleep for 100 milliseconds to run the print statement at 10Hz max
-		px4_usleep(100_ms);
+		// Sleep for 1 seconds to run the module loop at 1 Hz max!
+		px4_usleep(1_s);
 	}
 }
 
