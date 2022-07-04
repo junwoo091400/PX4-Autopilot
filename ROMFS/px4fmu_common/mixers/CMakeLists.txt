@@ -62,7 +62,6 @@ px4_add_romfs_files(
 	quad_w.main.mix
 	quad_x_cw.main.mix
 	quad_x.main.mix
-	quad_x_payload_delivery.main.mix
 	quad_x_vtol.main.mix
 	quad_x_vtol_AAERT.main.mix
 	rover_diff_and_servo.main.mix

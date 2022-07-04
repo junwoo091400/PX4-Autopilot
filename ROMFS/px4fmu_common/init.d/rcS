@@ -505,6 +505,12 @@ else
 		px4flow start -X &
 	fi
 
+	# Payload deliverer module if gripper is enabled
+	if param compare -s PD_GRIPPER_EN 1
+	then
+		payload_deliverer start
+	fi
+
 	#
 	# Optional board supplied extras: rc.board_extras
 	#
@@ -586,6 +592,3 @@ unset VEHICLE_TYPE
 # Boot is complete, inform MAVLink app(s) that the system is now fully up and running.
 #
 mavlink boot_complete
-
-# Start a payload_drop module to simulate payload delivery
-payload_drop start

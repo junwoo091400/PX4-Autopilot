@@ -140,7 +140,7 @@ enum NAV_FRAME {
  * Mission Item structure
  *
  * We explicitly handle struct padding to ensure consistency between in memory and on disk formats
- * across different platforms, toolchains, etc. Thhe use of #pragma pack is avoided to prevent the
+ * across different platforms, toolchains, etc. The use of #pragma pack is avoided to prevent the
  * possibility of unaligned memory accesses.
  */
 struct mission_item_s {

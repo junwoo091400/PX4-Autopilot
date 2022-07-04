@@ -1,6 +1,4 @@
-## Gripper Message
-## Used by gripper class to command actuation in the gripper, which is mapped to a specific
-## Output in the mixer module stage
+## Used to command an actuation in the gripper, which is mapped to a specific output in the mixer module
 
 uint64 timestamp
 

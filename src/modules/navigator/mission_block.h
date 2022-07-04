@@ -76,6 +76,11 @@ public:
 	static bool item_contains_position(const mission_item_s &item);
 
 	/**
+	 * Returns true if the mission item is not an instant action, but has a delay / timeout
+	 */
+	bool item_has_timeout(const mission_item_s &item);
+
+	/**
 	 * Check if the mission item contains a gate condition
 	 *
 	 * @return true if mission item is a gate
@@ -99,6 +104,20 @@ public:
 	void set_payload_depolyment_successful_flag(bool payload_deploy_result)
 	{
 		_payload_deploy_ack_successful = payload_deploy_result;
+	}
+
+	/**
+	 * @brief Set the payload deployment timeout
+	 *
+	 * Accessed in Navigator to set the appropriate timeout to wait for while waiting for a successful
+	 * payload delivery acknowledgement. If the payload deployment takes longer than timeout, mission will
+	 * continue into the next item automatically.
+	 *
+	 * @param timeout_s Timeout in seconds
+	 */
+	void set_payload_deployment_timeout(const float timeout_s)
+	{
+		_payload_deploy_timeout_s = timeout_s;
 	}
 
 protected:
@@ -187,7 +206,8 @@ protected:
 
 	/* Payload Deploy internal states are used by two NAV_CMDs: DO_WINCH and DO_GRIPPER */
 	bool _payload_deploy_ack_successful{false};	// Flag to keep track of whether we received an acknowledgement for a successful payload deployment
-	hrt_abstime _payload_deployed_time{0};		// Last payload deployment start time, to handle timeouts and definite execution time
+	hrt_abstime _payload_deployed_time{0};		// Last payload deployment start time to handle timeouts
+	float _payload_deploy_timeout_s{0.0f};		// Timeout for payload deployment in Mission class, to prevent endless loop if successful deployment ack is never received
 
 	// Used for MAV_CMD_DO_SET_SERVO command of a Mission item
 	uORB::Publication<actuator_controls_s>	_actuator_pub{ORB_ID(actuator_controls_2)};

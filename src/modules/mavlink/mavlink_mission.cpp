@@ -1441,11 +1441,11 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 			break;
 
 		case MAV_CMD_CONDITION_GATE:
-			mission_item->nav_cmd = MAV_CMD_CONDITION_GATE;
+			mission_item->nav_cmd = NAV_CMD_CONDITION_GATE;
 			break;
 
 		case MAV_CMD_NAV_FENCE_RETURN_POINT:
-			mission_item->nav_cmd = MAV_CMD_NAV_FENCE_RETURN_POINT;
+			mission_item->nav_cmd = NAV_CMD_FENCE_RETURN_POINT;
 			break;
 
 		case MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION:
@@ -1522,7 +1522,7 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 		case MAV_CMD_DO_WINCH:
 		case MAV_CMD_DO_GRIPPER:
 			mission_item->nav_cmd = mavlink_mission_item->command;
-			MavlinkMissionManager::copy_params_from_mavlink_to_mission_item(mission_item, mavlink_mission_item, 1, 6);
+			MavlinkMissionManager::copy_params_from_mavlink_to_mission_item(mission_item, mavlink_mission_item, 1, 2);
 			break;
 
 		case MAV_CMD_DO_CHANGE_SPEED:

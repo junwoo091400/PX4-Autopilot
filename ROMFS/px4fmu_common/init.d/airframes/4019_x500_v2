@@ -13,35 +13,6 @@
 
 . ${R}etc/init.d/rc.mc_defaults
 
-# Multicopter default parameters. Copied and modified from 'rc.mc_defaults'
-#
-# NOTE: Script variables are declared/initialized/unset in the rcS script.
-set VEHICLE_TYPE mc
-
-param set-default IMU_GYRO_RATEMAX 800
-
-param set-default NAV_ACC_RAD 2
-
-param set-default RTL_RETURN_ALT 30
-param set-default RTL_DESCEND_ALT 10
-
-param set-default PWM_MAIN_MAX 1950
-param set-default PWM_MAIN_MIN 1075
-param set-default PWM_MAIN_RATE 400
-
-param set-default GPS_UBX_DYNMODEL 6
-
-# set the Custom mixer configured to have payload deployment pin
-set MIXER quad_x_payload_delivery
-
-# We use 1 ~ 4 for Motor, 5 for Payload Deployment
-set PWM_OUT 12345
-
-# This is the gimbal pass mixer.
-set MIXER_AUX pass
-
-set PWM_AUX_OUT 1234
-
 param set-default IMU_GYRO_CUTOFF 30
 
 param set-default MC_ROLLRATE_P 0.14

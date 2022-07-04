@@ -1189,13 +1189,13 @@ Mission::set_mission_items()
 		}
 
 	} else {
-		// Allow a rotary wing vehicle to decelerate before reaching a wp with a hold time
+		// Allow a rotary wing vehicle to decelerate before reaching a wp with a hold time or a timeout
 		// This is done by setting the position triplet's next position's valid flag to false,
 		// which makes the FlightTask disregard the next position
 		// TODO: Setting the next waypoint's validity flag to handle braking / correct waypoint behavior
 		// seems hacky, handle this more properly.
 		const bool brake_for_hold = _navigator->get_vstatus()->vehicle_type == vehicle_status_s::VEHICLE_TYPE_ROTARY_WING
-					    && get_time_inside(_mission_item) > FLT_EPSILON;
+					    && (get_time_inside(_mission_item) > FLT_EPSILON || item_has_timeout(_mission_item));
 
 		if (_mission_item.autocontinue && !brake_for_hold) {
 			/* try to process next mission item */

@@ -150,22 +150,13 @@ MissionBlock::is_mission_item_reached_or_completed()
 
 	case NAV_CMD_DO_WINCH: {
 			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) * 1E-6f; // Convert Microseconds into seconds
-			const float definite_execution_time_s = _mission_item.params[5];
-			const float payload_deploy_timeout_s = _mission_item.params[4];
-
-			if (payload_deploy_elasped_time_s < definite_execution_time_s) {
-				// Require definite execution time as minimum time required to exit deployment mission item
-				return false;
-			}
 
 			if (_payload_deploy_ack_successful) {
-				PX4_INFO("Winch Deploy Ack received! Resuming mission");
-				_payload_deploy_ack_successful = false;
+				PX4_DEBUG("Winch Deploy Ack received! Resuming mission");
 				return true;
 
-			} else if (payload_deploy_elasped_time_s > payload_deploy_timeout_s) {
-				PX4_INFO("Winch Deploy Timed out, resuming mission!");
-				_payload_deployed_time = 0;
+			} else if (payload_deploy_elasped_time_s > _payload_deploy_timeout_s) {
+				PX4_DEBUG("Winch Deploy Timed out, resuming mission!");
 				return true;
 
 			}
@@ -176,22 +167,13 @@ MissionBlock::is_mission_item_reached_or_completed()
 
 	case NAV_CMD_DO_GRIPPER: {
 			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) * 1E-6f; // Convert Microseconds into seconds
-			const float definite_execution_time_s = _mission_item.params[3];
-			const float payload_deploy_timeout_s = _mission_item.params[2];
-
-			if (payload_deploy_elasped_time_s < definite_execution_time_s) {
-				// Require definite execution time as minimum time required to exit deployment mission item
-				return false;
-			}
 
 			if (_payload_deploy_ack_successful) {
-				PX4_INFO("Gripper Deploy Ack received! Resuming mission");
-				_payload_deploy_ack_successful = false;
+				PX4_DEBUG("Gripper Deploy Ack received! Resuming mission");
 				return true;
 
-			} else if (payload_deploy_elasped_time_s > payload_deploy_timeout_s) {
-				PX4_INFO("Gripper Deploy Timed out, resuming mission!");
-				_payload_deployed_time = 0;
+			} else if (payload_deploy_elasped_time_s > _payload_deploy_timeout_s) {
+				PX4_DEBUG("Gripper Deploy Timed out, resuming mission!");
 				return true;
 
 			}
@@ -599,6 +581,8 @@ MissionBlock::issue_command(const mission_item_s &item)
 		vcmd.param5 = static_cast<double>(item.params[4]);
 		vcmd.param6 = static_cast<double>(item.params[5]);
 		_navigator->publish_vehicle_cmd(&vcmd);
+
+		// Reset payload deploy flag & data to get ready to receive deployment ack result
 		_payload_deploy_ack_successful = false;
 		_payload_deployed_time = hrt_absolute_time();
 
@@ -645,18 +629,20 @@ MissionBlock::get_time_inside(const mission_item_s &item) const
 
 		// a negative time inside would be invalid
 		return math::max(item.time_inside, 0.0f);
-
-	} else if (item.nav_cmd == NAV_CMD_DO_WINCH) {
-		// DO_WINCH doesn't use the 'time_inside' field, as the timeout is not the
-		// first parameter of the MAVLink message for MAV_CMD_DO_WINCH
-		return math::max(item.params[4], 0.0f);
-
-	} else if (item.nav_cmd == NAV_CMD_DO_GRIPPER) {
-		return math::max(item.params[2], 0.0f);
-
 	}
 
 	return 0.0f;
+}
+
+// TODO: get_time_inside and item_has_timeout is quite redundant. Separate them out
+// Problem arises from the fact that DO_WINCH and DO_GRIPPER *should be an instantaneous command,
+// and shouldn't have a timeout defined as it is a DO_* command. It should rather be defined as CONDITION_GRIPPER
+// or so, and have a function named 'item_is_conditional'
+// Reference: https://mavlink.io/en/services/mission.html#mavlink_commands
+bool
+MissionBlock::item_has_timeout(const mission_item_s &item)
+{
+	return item.nav_cmd == NAV_CMD_DO_WINCH || item.nav_cmd == NAV_CMD_DO_GRIPPER;
 }
 
 bool

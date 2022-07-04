@@ -1,6 +1,6 @@
 /****************************************************************************
  *
- *   Copyright (c) 2013-2016 PX4 Development Team. All rights reserved.
+ *   Copyright (c) 2022 PX4 Development Team. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,59 +31,39 @@
  *
  ****************************************************************************/
 
+#pragma once
+
+#include "FunctionProviderBase.hpp"
+
+#include <uORB/topics/gripper.h>
+
 /**
- * @file px4_custom_mode.h
- * PX4 custom flight modes
- *
+ * @brief Function: Gripper (Used for actuating a Gripper)
  */
+class FunctionGripper : public FunctionProviderBase
+{
+public:
+	FunctionGripper() = default;
+	static FunctionProviderBase *allocate(const Context &context) { return new FunctionGripper(); }
 
-#ifndef PX4_CUSTOM_MODE_H_
-#define PX4_CUSTOM_MODE_H_
+	void update() override
+	{
+		gripper_s gripper;
 
-#include <stdint.h>
+		if (_gripper_sub.update(&gripper)) {
+			if (gripper.command == gripper_s::COMMAND_RELEASE) {
+				_data = -1.f; // Minimum command for release
 
-enum PX4_CUSTOM_MAIN_MODE {
-	PX4_CUSTOM_MAIN_MODE_MANUAL = 1,
-	PX4_CUSTOM_MAIN_MODE_ALTCTL,
-	PX4_CUSTOM_MAIN_MODE_POSCTL,
-	PX4_CUSTOM_MAIN_MODE_AUTO,
-	PX4_CUSTOM_MAIN_MODE_ACRO,
-	PX4_CUSTOM_MAIN_MODE_OFFBOARD,
-	PX4_CUSTOM_MAIN_MODE_STABILIZED,
-	PX4_CUSTOM_MAIN_MODE_RATTITUDE_LEGACY,
-	PX4_CUSTOM_MAIN_MODE_SIMPLE /* unused, but reserved for future use */
+			} else if (gripper.command == gripper_s::COMMAND_GRAB) {
+				_data = 1.f; // Maximum command for grab
+
+			}
+		}
+	}
+
+	float value(OutputFunction func) override { return _data; }
+
+private:
+	uORB::Subscription _gripper_sub{ORB_ID(gripper)};
+	float _data{-1.f};
 };
-
-enum PX4_CUSTOM_SUB_MODE_AUTO {
-	PX4_CUSTOM_SUB_MODE_AUTO_READY = 1,
-	PX4_CUSTOM_SUB_MODE_AUTO_TAKEOFF,
-	PX4_CUSTOM_SUB_MODE_AUTO_LOITER,
-	PX4_CUSTOM_SUB_MODE_AUTO_MISSION,
-	PX4_CUSTOM_SUB_MODE_AUTO_RTL,
-	PX4_CUSTOM_SUB_MODE_AUTO_LAND,
-	PX4_CUSTOM_SUB_MODE_AUTO_RESERVED_DO_NOT_USE, // was PX4_CUSTOM_SUB_MODE_AUTO_RTGS, deleted 2020-03-05
-	PX4_CUSTOM_SUB_MODE_AUTO_FOLLOW_TARGET,
-	PX4_CUSTOM_SUB_MODE_AUTO_PRECLAND,
-	PX4_CUSTOM_SUB_MODE_AUTO_VTOL_TAKEOFF
-};
-
-enum PX4_CUSTOM_SUB_MODE_POSCTL {
-	PX4_CUSTOM_SUB_MODE_POSCTL_POSCTL = 0,
-	PX4_CUSTOM_SUB_MODE_POSCTL_ORBIT
-};
-
-union px4_custom_mode {
-	struct {
-		uint16_t reserved;
-		uint8_t main_mode;
-		uint8_t sub_mode;
-	};
-	uint32_t data;
-	float data_float;
-	struct {
-		uint16_t reserved_hl;
-		uint16_t custom_mode_hl;
-	};
-};
-
-#endif /* PX4_CUSTOM_MODE_H_ */

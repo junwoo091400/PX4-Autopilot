@@ -1,43 +1,119 @@
+/****************************************************************************
+ *
+ *   Copyright (c) 2022 PX4 Development Team. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
 #include "payload_deliverer.h"
 
 PayloadDeliverer::PayloadDeliverer()
+	: ModuleParams(nullptr),
+	  ScheduledWorkItem(MODULE_NAME, px4::wq_configurations::lp_default)
 {
-	// Configure the Gripper
-	GripperConfig config{};
-	config.type = GripperConfig::GripperType::SERVO;
-	config.sensor = GripperConfig::GripperSensorType::NONE;
-	config.timeout_us = GRIPPER_TIMEOUT_US;
-	_gripper.init(config);
+}
+
+bool PayloadDeliverer::init()
+{
+	// Register callback that triggers the Run() function
+	if (!_vehicle_command_sub.registerCallback()) {
+		PX4_ERR("callback registration failed");
+		return false;
+	}
+
+	initialize_gripper();
+	return true;
+}
+
+bool PayloadDeliverer::initialize_gripper()
+{
+	// If gripper instance is invalid, try initializing it
+	if (!_gripper.is_valid() && _param_gripper_enable.get()) {
+		GripperConfig config{};
+		config.type = (GripperConfig::GripperType)_param_gripper_type.get();
+		config.sensor = GripperConfig::GripperSensorType::NONE; // Feedback sensor isn't supported for now
+		config.timeout_us = hrt_abstime(_param_gripper_timeout_s.get() * 1000000ULL);
+		_gripper.init(config);
+	}
+
+	// NOTE: Support for changing gripper sensor type / gripper type configuration when
+	// the parameter change is detected isn't added as we don't have actual use case for that
+	// yet!
+
 	if (!_gripper.is_valid()) {
-		PX4_INFO("Gripper object initialization invalid!");
+		PX4_DEBUG("Gripper object initialization invalid!");
+		return false;
+
+	} else {
+		_gripper.grab(); // Initialize to grab position
+		return true;
 	}
 }
 
-void PayloadDeliverer::run()
+void PayloadDeliverer::parameter_update()
 {
-	static vehicle_command_s vcmd{};
+	// Call the ModuleParams function to update internal parameters
+	updateParams();
+	initialize_gripper();
+}
 
-	while (!should_exit()) {
-		hrt_abstime now = hrt_absolute_time();
+void PayloadDeliverer::Run()
+{
+	if (should_exit()) {
+		ScheduleClear();
+		exit_and_cleanup();
+		return;
+	}
 
-		if (_vehicle_command_sub.update(&vcmd)) {
-			update_gripper(now, &vcmd);
+	vehicle_command_s vcmd{};
+	hrt_abstime now = hrt_absolute_time();
 
-		} else {
-			update_gripper(now);
+	if (_vehicle_command_sub.update(&vcmd)) {
+		update_gripper(now, &vcmd);
 
-		}
+	} else {
+		update_gripper(now);
 
-		px4_usleep(100_ms);
 	}
 }
 
 void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_command_s *vehicle_command)
 {
+	if (!_param_gripper_enable.get()) {
+		PX4_WARN("Gripper isn't enabled, so the gripper functionality will not work!");
+		// If gripper isn't enabled, don't do anything
+		return;
+	}
+
 	_gripper.update();
 
 	// Process successful release command acknowledgement
-	if (_gripper.released_readOnce()) {
+	if (_gripper.released_read_once()) {
 		vehicle_command_ack_s vcmd_ack{};
 		vcmd_ack.timestamp = now;
 
@@ -45,7 +121,7 @@ void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_com
 		vcmd_ack.result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		_vehicle_command_ack_pub.publish(vcmd_ack);
 
-		PX4_INFO("Payload Drop Successful Ack Sent!");
+		PX4_DEBUG("Payload Drop Successful Ack Sent!");
 	}
 
 	// If there's no vehicle command to process, just return
@@ -55,41 +131,74 @@ void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_com
 
 	// Process if we received DO_GRIPPER vehicle command
 	if (vehicle_command -> command == vehicle_command_s::VEHICLE_CMD_DO_GRIPPER) {
-		PX4_INFO("Gripper command received!");
-		const int32_t gripper_action = *(int32_t*)&vehicle_command -> param2; // Convert the action to integer
-		switch (gripper_action) {
-			case GRIPPER_ACTION_GRAB:
-				_gripper.grab();
-				break;
+		PX4_DEBUG("Gripper command received!");
+		const int32_t gripper_action = *(int32_t *)&vehicle_command -> param2; // Convert the action to integer
 
-			case GRIPPER_ACTION_RELEASE:
-				_gripper.release();
-				break;
+		switch (gripper_action) {
+		case vehicle_command_s::GRIPPER_ACTION_GRAB:
+			_gripper.grab();
+			break;
+
+		case vehicle_command_s::GRIPPER_ACTION_RELEASE:
+			_gripper.release();
+			break;
 		}
 	}
 }
 
-// ModuleBase related functions (below)
-int PayloadDeliverer::task_spawn(int argc, char *argv[])
+void PayloadDeliverer::gripper_test()
 {
-	px4_main_t entry_point = (px4_main_t)&run_trampoline;
-
-	int _task_id = px4_task_spawn_cmd("payload_deliverer", SCHED_DEFAULT,
-					  SCHED_PRIORITY_DEFAULT, 1500, entry_point, (char *const *)argv);
-
-	if (_task_id < 0) {
-		PX4_INFO("Payload Deliverer module instantiation Failed!");
-		_task_id = -1;
-		return -errno;
-
-	} else {
-		return PX4_OK;
+	if (!_gripper.is_valid()) {
+		PX4_DEBUG("Gripper is not initialized correctly!");
+		return;
 	}
+
+	PX4_DEBUG("Test: Opening the Gripper!");
+	_gripper.release();
+	px4_usleep(5_s);
+	PX4_DEBUG("Test: Closing the Gripper!");
+	_gripper.grab();
 }
 
-PayloadDeliverer *PayloadDeliverer::instantiate(int argc, char *argv[])
+void PayloadDeliverer::gripper_open()
 {
-	return new PayloadDeliverer();
+	if (!_gripper.is_valid()) {
+		PX4_DEBUG("Gripper is not initialized correctly!");
+		return;
+	}
+
+	_gripper.release();
+}
+
+void PayloadDeliverer::gripper_close()
+{
+	if (!_gripper.is_valid()) {
+		PX4_DEBUG("Gripper is not initialized correctly!");
+		return;
+	}
+
+	_gripper.grab();
+}
+
+int PayloadDeliverer::custom_command(int argc, char *argv[])
+{
+	if (argc >= 1) {
+		// Tests the basic payload open / close ability
+		if (strcmp(argv[0], "gripper_test") == 0) {
+			get_instance() -> gripper_test();
+			return 0;
+
+		} else if (strcmp(argv[0], "gripper_open") == 0) {
+			get_instance() -> gripper_open();
+			return 0;
+
+		} else if (strcmp(argv[0], "gripper_close") == 0) {
+			get_instance() -> gripper_close();
+			return 0;
+		}
+	}
+
+	return print_usage("Unrecognized command");
 }
 
 int PayloadDeliverer::print_usage(const char *reason)
@@ -101,42 +210,45 @@ int PayloadDeliverer::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
-Implementation of a simple payload deliverer module that processes gripper and winch control,
-activated by vehicle commands
+Handles payload delivery with either Gripper or a Winch with an appropriate timeout / feedback sensor setting,
+and communicates back the delivery result as an acknowledgement internally
 
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("payload_deliverer", "auxilary");
 	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Tests the Gripper's release & grabbing sequence");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("gripper_test", "Tests the Gripper's release & grabbing sequence");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("gripper_open", "Opens the gripper");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("gripper_close", "Closes the gripper");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;
 }
 
-void PayloadDeliverer::test_payload()
+int PayloadDeliverer::task_spawn(int argc, char *argv[])
 {
-	PX4_INFO("Test: Opening the Gripper!");
-	_gripper.release();
-	px4_usleep(5_s);
-	PX4_INFO("Test: Closing the Gripper!");
-	_gripper.grab();
-}
+	PayloadDeliverer *instance = new PayloadDeliverer();
 
-int PayloadDeliverer::custom_command(int argc, char *argv[])
-{
-	if (argc >= 1) {
-		// Tests the basic payload open / close ability
-		if (strcmp(argv[0], "test") == 0) {
-			get_instance() -> test_payload();
-			return 0;
+	if (instance) {
+		_object.store(instance);
+		_task_id = task_id_is_work_queue;
+
+		if (instance->init()) {
+			return PX4_OK;
 		}
+
+	} else {
+		PX4_ERR("Alloc failed");
 	}
 
-	return print_usage("Unrecognized command");
+	// Cleanup instance in memory and mark this module as invalid to run
+	delete instance;
+	_object.store(nullptr);
+	_task_id = -1;
+
+	return PX4_ERROR;
 }
 
-// Main Entry point function for PX4 NuttX System
 int payload_deliverer_main(int argc, char *argv[])
 {
 	return PayloadDeliverer::main(argc, argv);

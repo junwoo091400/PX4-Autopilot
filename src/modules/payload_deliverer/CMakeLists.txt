@@ -36,5 +36,10 @@ px4_add_module(
 	SRCS
 		payload_deliverer.cpp
 		gripper.cpp
+	MODULE_CONFIG
+		module.yaml
+	COMPILE_FLAGS
+		-DDEBUG_BUILD
 	DEPENDS
+		px4_work_queue
 	)
