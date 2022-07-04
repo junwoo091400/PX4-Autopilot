@@ -2,8 +2,15 @@
 
 PayloadDeliverer::PayloadDeliverer()
 {
-	// Close the gripper as initialization
-	send_gripper_control(GripperAction::CLOSE);
+	// Configure the Gripper
+	GripperConfig config{};
+	config.type = GripperConfig::GripperType::SERVO;
+	config.sensor = GripperConfig::GripperSensorType::NONE;
+	config.timeout_us = GRIPPER_TIMEOUT_US;
+	_gripper.init(config);
+	if (!_gripper.is_valid()) {
+		PX4_INFO("Gripper object initialization invalid!");
+	}
 }
 
 void PayloadDeliverer::run()
@@ -13,61 +20,53 @@ void PayloadDeliverer::run()
 	while (!should_exit()) {
 		hrt_abstime now = hrt_absolute_time();
 
-		// Check for a payload drop vehicle command message
-		if (_vehicle_command_sub.update(&vcmd) && (vcmd.command == vehicle_command_s::VEHICLE_CMD_DO_WINCH ||
-				vcmd.command == vehicle_command_s::VEHICLE_CMD_DO_GRIPPER)) {
-			PX4_INFO("Payload Drop Initiated. Gripper Opening!");
-			_current_command = vcmd.command;
-			_current_payload = PayloadDeployType::GRIPPER;
-			send_gripper_control(GripperAction::OPEN);
-			// Execute payload drop
-			_last_payload_drop_time = now;
-			_is_executing_payload_drop = true;
-		}
+		if (_vehicle_command_sub.update(&vcmd)) {
+			update_gripper(now, &vcmd);
 
-		// Simulate a successful payload drop after certain period
-		if (_is_executing_payload_drop &&
-		    ((now - _last_payload_drop_time) > PAYLOAD_DROP_TIMEOUT_SIMULATION_US)) {
-			vehicle_command_ack_s vcmd_ack{};
-			vcmd_ack.timestamp = now;
+		} else {
+			update_gripper(now);
 
-			vcmd_ack.command = _current_command;
-			_current_payload = PayloadDeployType::NONE;
-
-			vcmd_ack.result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
-			// Publish a acknowledgement of a successful payload drop
-			_vehicle_command_ack_pub.publish(vcmd_ack);
-
-			PX4_INFO("Payload Drop Successful Ack Sent. Gripper closing!");
-			send_gripper_control(GripperAction::CLOSE);
-
-			// Reset internal flags
-			_is_executing_payload_drop = false;
 		}
 
 		px4_usleep(100_ms);
 	}
 }
 
-bool PayloadDeliverer::send_gripper_control(const GripperAction gripper_action)
+void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_command_s *vehicle_command)
 {
-	_actuator_controls_pub.get().timestamp = hrt_absolute_time();
+	_gripper.update();
 
-	switch (gripper_action) {
-	case GripperAction::OPEN:
-		_actuator_controls_pub.get().control[GRIPPER_ACTUATOR_CONTROLS_FUNCTION] = GRIPPER_OPEN_ACTUATOR_CONTROLS_VAL;
-		break;
+	// Process successful release command acknowledgement
+	if (_gripper.released_readOnce()) {
+		vehicle_command_ack_s vcmd_ack{};
+		vcmd_ack.timestamp = now;
 
-	case GripperAction::CLOSE:
-		_actuator_controls_pub.get().control[GRIPPER_ACTUATOR_CONTROLS_FUNCTION] = GRIPPER_CLOSE_ACTUATOR_CONTROLS_VAL;
-		break;
+		vcmd_ack.command = vehicle_command_s::VEHICLE_CMD_DO_GRIPPER;
+		vcmd_ack.result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
+		_vehicle_command_ack_pub.publish(vcmd_ack);
 
-	// Unsupported Gripper Action
-	default:
-		return false;
+		PX4_INFO("Payload Drop Successful Ack Sent!");
 	}
 
-	return _actuator_controls_pub.update();
+	// If there's no vehicle command to process, just return
+	if (vehicle_command == nullptr) {
+		return;
+	}
+
+	// Process if we received DO_GRIPPER vehicle command
+	if (vehicle_command -> command == vehicle_command_s::VEHICLE_CMD_DO_GRIPPER) {
+		PX4_INFO("Gripper command received!");
+		const int32_t gripper_action = *(int32_t*)&vehicle_command -> param2; // Convert the action to integer
+		switch (gripper_action) {
+			case GRIPPER_ACTION_GRAB:
+				_gripper.grab();
+				break;
+
+			case GRIPPER_ACTION_RELEASE:
+				_gripper.release();
+				break;
+		}
+	}
 }
 
 // ModuleBase related functions (below)
@@ -79,7 +78,7 @@ int PayloadDeliverer::task_spawn(int argc, char *argv[])
 					  SCHED_PRIORITY_DEFAULT, 1500, entry_point, (char *const *)argv);
 
 	if (_task_id < 0) {
-		PX4_INFO("Payload Drop module instantiation Failed!");
+		PX4_INFO("Payload Deliverer module instantiation Failed!");
 		_task_id = -1;
 		return -errno;
 
@@ -102,14 +101,14 @@ int PayloadDeliverer::print_usage(const char *reason)
 	PRINT_MODULE_DESCRIPTION(
 		R"DESCR_STR(
 ### Description
-Implementation of a simple simulated payload drop module that sends a successful payload drop
-acknowledgement message after a certain timeout period.
+Implementation of a simple payload deliverer module that processes gripper and winch control,
+activated by vehicle commands
 
 )DESCR_STR");
 
 	PRINT_MODULE_USAGE_NAME("payload_deliverer", "auxilary");
 	PRINT_MODULE_USAGE_COMMAND("start");
-	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Tests the Payload deploy & retraction sequence");
+	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Tests the Gripper's release & grabbing sequence");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 
 	return 0;
@@ -118,10 +117,10 @@ acknowledgement message after a certain timeout period.
 void PayloadDeliverer::test_payload()
 {
 	PX4_INFO("Test: Opening the Gripper!");
-	send_gripper_control(GripperAction::OPEN);
+	_gripper.release();
 	px4_usleep(5_s);
 	PX4_INFO("Test: Closing the Gripper!");
-	send_gripper_control(GripperAction::CLOSE);
+	_gripper.grab();
 }
 
 int PayloadDeliverer::custom_command(int argc, char *argv[])

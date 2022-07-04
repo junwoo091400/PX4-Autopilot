@@ -35,5 +35,6 @@ px4_add_module(
 	MAIN payload_deliverer
 	SRCS
 		payload_deliverer.cpp
+		gripper.cpp
 	DEPENDS
 	)

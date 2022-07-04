@@ -5,18 +5,17 @@
  *
  */
 #include <drivers/drv_hrt.h>
-
 #include <px4_platform_common/module.h>
+
+#include "gripper.h"
 
 #include <uORB/Publication.hpp>
 #include <uORB/Subscription.hpp>
-
 #include <uORB/topics/vehicle_command.h>
-
 #include <uORB/topics/vehicle_command_ack.h>
 #include <uORB/topics/actuator_controls.h>
 
-using namespace time_literals; // To use time literals like "100_ms"
+using namespace time_literals;
 
 /**
  * Payload Deliverer app start / stop handling function
@@ -24,7 +23,7 @@ using namespace time_literals; // To use time literals like "100_ms"
 extern "C" __EXPORT int payload_deliverer_main(int argc, char *argv[]);
 
 // Timeout to simulate a successful payload drop, after which vechicle_command_ack message gets published
-static constexpr hrt_abstime PAYLOAD_DROP_TIMEOUT_SIMULATION_US = 5000000;
+static constexpr hrt_abstime GRIPPER_TIMEOUT_US = 2_s;
 
 // Types of Payloads supported by the module
 enum class PayloadDeployType {
@@ -33,20 +32,14 @@ enum class PayloadDeployType {
 	WINCH
 };
 
-// GRIPPER Actuator Controls Information
-static constexpr uint8_t GRIPPER_ACTUATOR_CONTROLS_GROUP = 1;
-static constexpr uint8_t GRIPPER_ACTUATOR_CONTROLS_FUNCTION = 4;
-
 // GRIPPER retract / open values for actuator controls message
 // To CLOSE, we need to EXTEND the linear servo, so we need to command positive value.
 static constexpr float GRIPPER_CLOSE_ACTUATOR_CONTROLS_VAL = 0.75f;
 static constexpr float GRIPPER_OPEN_ACTUATOR_CONTROLS_VAL = -1.0f;
 
-enum class GripperAction {
-	NONE,
-	OPEN,
-	CLOSE
-};
+// Vehicle command constants defined in MAV_CMD documentation of MAVLink
+static constexpr int32_t GRIPPER_ACTION_RELEASE = 0;
+static constexpr int32_t GRIPPER_ACTION_GRAB = 1;
 
 /**
  * @brief Payload Deliverer Module
@@ -77,16 +70,13 @@ public:
 	void test_payload();
 
 private:
-	bool send_gripper_control(const GripperAction gripper_action);
+	// Update the state of the gripper
+	void update_gripper(const hrt_abstime &now, const vehicle_command_s *vehicle_command = nullptr);
 
-	PayloadDeployType _current_payload{PayloadDeployType::NONE};
-	uint16_t _current_command{0}; 		// Current vehicle command for payload deployment that is being executed
-
-	bool _is_executing_payload_drop{false}; // Indicates whether the module is in process of dropping the payload
-	hrt_abstime _last_payload_drop_time{0}; // [us] Last time that payload drop was commanded
+	// Gripper object to handle gripper action
+	Gripper _gripper;
 
 	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
-
 	uORB::Publication<vehicle_command_ack_s> _vehicle_command_ack_pub{ORB_ID(vehicle_command_ack)};
 	uORB::PublicationData<actuator_controls_s> _actuator_controls_pub{ORB_ID(actuator_controls_1)};
 };
