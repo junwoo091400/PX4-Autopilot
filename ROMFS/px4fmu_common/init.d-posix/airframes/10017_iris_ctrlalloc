@@ -11,13 +11,22 @@
 
 param set-default SYS_CTRL_ALLOC 1
 
-
 param set-default CA_AIRFRAME 0
 
 param set-default CA_ROTOR_COUNT 4
+
 param set-default CA_ROTOR0_PX 0.1515
 param set-default CA_ROTOR0_PY 0.245
-param set-default CA_ROTOR0_KM 0.05
+
+## Simulation of a Rotor0 failure in quadcopter
+
+# Simulate rotor 0 failure (no torque / thrust capability)
+param set-default CA_ROTOR0_KM 0.00
+param set-default CA_ROTOR0_CT 0.00
+
+# Set yaw weight to 0, so that we don't care about yaw authority
+param set-default MC_YAW_WEIGHT 0.0
+
 param set-default CA_ROTOR1_PX -0.1515
 param set-default CA_ROTOR1_PY -0.1875
 param set-default CA_ROTOR1_KM 0.05
