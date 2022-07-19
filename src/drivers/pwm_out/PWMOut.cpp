@@ -421,6 +421,11 @@ bool PWMOut::updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 				outputs[i] = 0;
 			}
 
+			// Override specified output while testing
+			if (_is_performing_pwm_out_test && i == (size_t)_test_output_idx) {
+				outputs[i] = _test_output_value;
+			}
+
 			if (_pwm_mask & (1 << (i + _output_base))) {
 				up_pwm_servo_set(_output_base + i, outputs[i]);
 			}
@@ -945,18 +950,25 @@ void PWMOut::test(const int output_idx, const float output_value)
 	_test_output_idx = output_idx;
 	_test_output_value = output_value;
 
+	PX4_INFO("Outputting %f to output %i for testing PWM", (double)output_value, output_idx);
+	px4_usleep(3_s);
 
+	// Unset the flag to disable test value override in Mixer callback
+	_is_performing_pwm_out_test = false;
+	PX4_INFO("Exiting the test after 3 seconds timeout!");
 }
 
 int PWMOut::custom_command(int argc, char *argv[])
 {
 	int output_channel{-1};
 	float output_value{10.0f};
+	int pwmout_instance_idx{0};
 
+	int ch;
 	int myoptind = 1;
 	const char *myoptarg = nullptr;
 
-	while ((ch = px4_getopt(argc, argv, "c:v:", &myoptind, &myoptarg)) != EOF) {
+	while ((ch = px4_getopt(argc, argv, "c:v:i:", &myoptind, &myoptarg)) != EOF) {
 		switch (ch) {
 
 		case 'c':
@@ -967,15 +979,19 @@ int PWMOut::custom_command(int argc, char *argv[])
 		case 'v':
 			output_value = strtof(myoptarg, nullptr);
 
-			if (value < -1.f || value > 1.f) {
-				usage("value invalid");
+			if (output_value < -1.f || output_value > 1.f) {
+				print_usage("value invalid");
 				return 1;
 			}
 
 			break;
 
+		case 'i':
+			pwmout_instance_idx = (int)strtol(myoptarg, nullptr, 0);
+			break;
+
 		default:
-			usage(nullptr);
+			print_usage(nullptr);
 			return 1;
 		}
 	}
@@ -984,22 +1000,31 @@ int PWMOut::custom_command(int argc, char *argv[])
 		if (strcmp("test", argv[myoptind]) == 0) {
 
 			if (output_value > 1.0f) {
-				usage("Missing argument: value");
+				print_usage("Missing argument: value");
 				return 1;
 			}
 
 			if (output_channel == -1) {
-				usage("Missing argument: channel");
+				print_usage("Missing argument: channel");
+				return 1;
+			}
+
+			if (pwmout_instance_idx < 0 || pwmout_instance_idx >= PWM_OUT_MAX_INSTANCES) {
+				print_usage("PWM instance index out of range");
 				return 1;
 			}
 
 			// Perform the PWM output test
-			test(output_channel, output_value);
+			if (_objects[pwmout_instance_idx].load()) {
+				_objects[pwmout_instance_idx].load()->test(output_channel, output_value);
+			}
+
 			return 0;
 		}
 	}
 
-	return print_usage("unknown command");
+	print_usage(nullptr);
+	return 0;
 }
 
 int PWMOut::print_status()
@@ -1070,8 +1095,9 @@ By default the module runs on a work queue with a callback on the uORB actuator_
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
 	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Test specified output to a specific output value");
-	PRINT_MODULE_USAGE_PARAM_INT('c', -1, 1, 16, "Channel (1, 2, ..)", true);
-	PRINT_MODULE_USAGE_PARAM_INT('v', -1, 1, 8, "Value (-1 .. 1)", true);
+	PRINT_MODULE_USAGE_PARAM_INT('c', -1, 1, 16, "Channel (1, 2, ..)", false);
+	PRINT_MODULE_USAGE_PARAM_FLOAT('v', -1.0, -1.0, 1.0, "Value (-1 .. 1)", false);
+	PRINT_MODULE_USAGE_PARAM_INT('i', 0, 0, 1, "PWMOut instance number (0, 1, ..)", true);
 
 	return 0;
 }
