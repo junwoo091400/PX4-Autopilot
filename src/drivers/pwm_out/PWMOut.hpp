@@ -101,8 +101,6 @@ public:
 	static bool trylock_module() { return (pthread_mutex_trylock(&pwm_out_module_mutex) == 0); }
 	static void unlock_module() { pthread_mutex_unlock(&pwm_out_module_mutex); }
 
-	static int test(const char *dev);
-
 	int ioctl(device::file_t *filp, int cmd, unsigned long arg) override;
 
 	int init() override;
@@ -115,6 +113,11 @@ public:
 
 	bool updateOutputs(bool stop_motors, uint16_t outputs[MAX_ACTUATORS],
 			   unsigned num_outputs, unsigned num_control_groups_updated) override;
+
+	/**
+	 * @brief Test PWM Output
+	 */
+	void test(const int output_idx, const float output_value);
 
 private:
 	static constexpr int FMU_MAX_ACTUATORS = DIRECT_PWM_OUTPUT_CHANNELS;
@@ -149,6 +152,10 @@ private:
 	bool		_pwm_initialized{false};
 
 	unsigned	_num_disarmed_set{0};
+
+	bool _is_performing_pwm_out_test{false}; // Set to true when we are executing pwm output test functionality
+	int _test_output_idx{-1};
+	float _test_output_value{-1.0f};
 
 	perf_counter_t	_cycle_perf;
 	perf_counter_t	_interval_perf;

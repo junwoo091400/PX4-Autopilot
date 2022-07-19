@@ -939,8 +939,66 @@ int PWMOut::pwm_ioctl(device::file_t *filp, int cmd, unsigned long arg)
 	return ret;
 }
 
+void PWMOut::test(const int output_idx, const float output_value)
+{
+	_is_performing_pwm_out_test = true;
+	_test_output_idx = output_idx;
+	_test_output_value = output_value;
+
+
+}
+
 int PWMOut::custom_command(int argc, char *argv[])
 {
+	int output_channel{-1};
+	float output_value{10.0f};
+
+	int myoptind = 1;
+	const char *myoptarg = nullptr;
+
+	while ((ch = px4_getopt(argc, argv, "c:v:", &myoptind, &myoptarg)) != EOF) {
+		switch (ch) {
+
+		case 'c':
+			// User specified output channel '1' translates to output index '0' (offset 1)
+			output_channel = (int)strtol(myoptarg, nullptr, 0) - 1;
+			break;
+
+		case 'v':
+			output_value = strtof(myoptarg, nullptr);
+
+			if (value < -1.f || value > 1.f) {
+				usage("value invalid");
+				return 1;
+			}
+
+			break;
+
+		default:
+			usage(nullptr);
+			return 1;
+		}
+	}
+
+	if (myoptind >= 0 && myoptind < argc) {
+		if (strcmp("test", argv[myoptind]) == 0) {
+
+			if (output_value > 1.0f) {
+				usage("Missing argument: value");
+				return 1;
+			}
+
+			if (output_channel == -1) {
+				usage("Missing argument: channel");
+				return 1;
+			}
+
+			// Perform the PWM output test
+			test(output_channel, output_value);
+			return 0;
+		}
+	}
+
 	return print_usage("unknown command");
 }
 
@@ -1011,6 +1069,9 @@ By default the module runs on a work queue with a callback on the uORB actuator_
 	PRINT_MODULE_USAGE_NAME("pwm_out", "driver");
 	PRINT_MODULE_USAGE_COMMAND("start");
 	PRINT_MODULE_USAGE_DEFAULT_COMMANDS();
+	PRINT_MODULE_USAGE_COMMAND_DESCR("test", "Test specified output to a specific output value");
+	PRINT_MODULE_USAGE_PARAM_INT('c', -1, 1, 16, "Channel (1, 2, ..)", true);
+	PRINT_MODULE_USAGE_PARAM_INT('v', -1, 1, 8, "Value (-1 .. 1)", true);
 
 	return 0;
 }
