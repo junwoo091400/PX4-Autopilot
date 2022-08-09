@@ -112,31 +112,28 @@ uint16 VEHICLE_CMD_DO_WINCH = 42600			# Command to operate winch.
 uint32 VEHICLE_CMD_PX4_INTERNAL_START    = 65537        # start of PX4 internal only vehicle commands (> UINT16_MAX)
 uint32 VEHICLE_CMD_SET_GPS_GLOBAL_ORIGIN = 100000       # Sets the GPS co-ordinates of the vehicle local origin (0,0,0) position. |Empty|Empty|Empty|Empty|Latitude|Longitude|Altitude|
 
-### Parameters
-
+# Parameter fields
 float32 param1			# Parameter 1, used as defined by each MAVLink MAV_CMD enum.
-
-# used as param1 in DO_CHANGE_SPEED command
-uint8 SPEED_TYPE_AIRSPEED = 0
-uint8 SPEED_TYPE_GROUNDSPEED = 1
-uint8 SPEED_TYPE_CLIMB_SPEED = 2
-uint8 SPEED_TYPE_DESCEND_SPEED = 3
-
-# used as param1 in ARM_DISARM command
-int8 ARMING_ACTION_DISARM = 0
-int8 ARMING_ACTION_ARM = 1
-
 float32 param2			# Parameter 2, used as defined by each MAVLink MAV_CMD enum.
-
-# used as param2 in VEHICLE_CMD_DO_GRIPPER
-uint8 GRIPPER_ACTION_RELEASE = 0
-uint8 GRIPPER_ACTION_GRAB = 1
-
 float32 param3			# Parameter 3, used as defined by each MAVLink MAV_CMD enum.
 float32 param4			# Parameter 4, used as defined by each MAVLink MAV_CMD enum.
 float64 param5			# Parameter 5, used as defined by each MAVLink MAV_CMD enum.
 float64 param6			# Parameter 6, used as defined by each MAVLink MAV_CMD enum.
 float32 param7			# Parameter 7, used as defined by each MAVLink MAV_CMD enum.
+
+# param1 in DO_CHANGE_SPEED command
+uint8 SPEED_TYPE_AIRSPEED = 0
+uint8 SPEED_TYPE_GROUNDSPEED = 1
+uint8 SPEED_TYPE_CLIMB_SPEED = 2
+uint8 SPEED_TYPE_DESCEND_SPEED = 3
+
+# param1 in ARM_DISARM command
+int8 ARMING_ACTION_DISARM = 0
+int8 ARMING_ACTION_ARM = 1
+
+# param2 in VEHICLE_CMD_DO_GRIPPER
+uint8 GRIPPER_ACTION_RELEASE = 0
+uint8 GRIPPER_ACTION_GRAB = 1
 
 uint8 VEHICLE_MOUNT_MODE_RETRACT = 0				# Load and keep safe position (Roll,Pitch,Yaw) from permanent memory and stop stabilization |
 uint8 VEHICLE_MOUNT_MODE_NEUTRAL = 1				# Load and keep neutral position (Roll,Pitch,Yaw) from permanent memory. |

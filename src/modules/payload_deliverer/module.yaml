@@ -20,7 +20,7 @@ parameters:
                 0: Servo
             min: -1
             max: 0
-            default: -1
+            default: 0
 
         PD_GRIPPER_TO:
             description:

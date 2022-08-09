@@ -149,7 +149,8 @@ MissionBlock::is_mission_item_reached_or_completed()
 		break;
 
 	case NAV_CMD_DO_WINCH: {
-			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) * 1E-6f; // Convert Microseconds into seconds
+			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) *
+					1E-6f; // TODO: Add proper microseconds_to_seconds function
 
 			if (_payload_deploy_ack_successful) {
 				PX4_DEBUG("Winch Deploy Ack received! Resuming mission");
@@ -166,7 +167,7 @@ MissionBlock::is_mission_item_reached_or_completed()
 		}
 
 	case NAV_CMD_DO_GRIPPER: {
-			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) * 1E-6f; // Convert Microseconds into seconds
+			const float payload_deploy_elasped_time_s = (now - _payload_deployed_time) * 1E-6f;
 
 			if (_payload_deploy_ack_successful) {
 				PX4_DEBUG("Gripper Deploy Ack received! Resuming mission");
@@ -673,17 +674,9 @@ MissionBlock::item_contains_marker(const mission_item_s &item)
 bool
 MissionBlock::mission_item_to_position_setpoint(const mission_item_s &item, position_setpoint_s *sp)
 {
-	/* don't change the setpoint for non-position items except certain exceptions */
+	// Don't change the setpoint for non-position items
 	if (!item_contains_position(item)) {
-		switch (item.nav_cmd) {
-		// For Paylod Deployment, don't modify position setpoint
-		case NAV_CMD_DO_WINCH:
-			return true;
-
-		// All the other non-positional mission items don't set the position
-		default:
-			return false;
-		}
+		return false;
 	}
 
 	sp->lat = item.lat;

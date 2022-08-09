@@ -68,7 +68,7 @@ void LoggedTopics::add_default_topics()
 	add_topic("gimbal_manager_set_attitude", 500);
 	add_optional_topic("generator_status");
 	add_optional_topic("gps_dump");
-	add_topic("gripper");
+	add_optional_topic("gripper");
 	add_optional_topic("heater_status");
 	add_topic("home_position");
 	add_topic("hover_thrust_estimate", 100);

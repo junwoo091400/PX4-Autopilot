@@ -77,7 +77,6 @@ bool PayloadDeliverer::initialize_gripper()
 
 void PayloadDeliverer::parameter_update()
 {
-	// Call the ModuleParams function to update internal parameters
 	updateParams();
 	initialize_gripper();
 }
@@ -86,12 +85,19 @@ void PayloadDeliverer::Run()
 {
 	if (should_exit()) {
 		ScheduleClear();
+		_vehicle_command_sub.unregisterCallback();
 		exit_and_cleanup();
 		return;
 	}
 
+	if (_parameter_update_sub.updated()) {
+		parameter_update_s param_update_dummy;
+		_parameter_update_sub.copy(&param_update_dummy);
+		parameter_update();
+	}
+
+	const hrt_abstime now = hrt_absolute_time();
 	vehicle_command_s vcmd{};
-	hrt_abstime now = hrt_absolute_time();
 
 	if (_vehicle_command_sub.update(&vcmd)) {
 		update_gripper(now, &vcmd);
@@ -104,9 +110,8 @@ void PayloadDeliverer::Run()
 
 void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_command_s *vehicle_command)
 {
-	if (!_param_gripper_enable.get()) {
-		PX4_WARN("Gripper isn't enabled, so the gripper functionality will not work!");
-		// If gripper isn't enabled, don't do anything
+	if (!_gripper.is_valid()) {
+		PX4_WARN("Gripper instance not valid but vehicle command was received. Gripper won't work!");
 		return;
 	}
 
@@ -130,9 +135,9 @@ void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_com
 	}
 
 	// Process if we received DO_GRIPPER vehicle command
-	if (vehicle_command -> command == vehicle_command_s::VEHICLE_CMD_DO_GRIPPER) {
+	if (vehicle_command->command == vehicle_command_s::VEHICLE_CMD_DO_GRIPPER) {
 		PX4_DEBUG("Gripper command received!");
-		const int32_t gripper_action = *(int32_t *)&vehicle_command -> param2; // Convert the action to integer
+		const int32_t gripper_action = *(int32_t *)&vehicle_command->param2; // Convert the action to integer
 
 		switch (gripper_action) {
 		case vehicle_command_s::GRIPPER_ACTION_GRAB:
@@ -153,10 +158,29 @@ void PayloadDeliverer::gripper_test()
 		return;
 	}
 
-	PX4_DEBUG("Test: Opening the Gripper!");
+	PX4_INFO("Test: Opening the Gripper!");
+
+	// TODO: It could be better to publish vehicle command directly. But this currently doesn't work since
+	// this function would halt the Run() function's operation, and the vehicle command doesn't get translated into
+	// gripper uORB message. Need to fix this.
+
+	// vehicle_command_s vcmd;
+	// vcmd.timestamp = hrt_absolute_time();
+	// vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_GRIPPER;
+	// vcmd.param2 = vehicle_command_s::GRIPPER_ACTION_RELEASE;
+	// _vehicle_command_pub.publish(vcmd);
+
 	_gripper.release();
+
 	px4_usleep(5_s);
-	PX4_DEBUG("Test: Closing the Gripper!");
+
+	PX4_INFO("Test: Closing the Gripper!");
+
+	// vcmd.timestamp = hrt_absolute_time();
+	// vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_GRIPPER;
+	// vcmd.param2 = vehicle_command_s::GRIPPER_ACTION_GRAB;
+	// _vehicle_command_pub.publish(vcmd);
+
 	_gripper.grab();
 }
 
@@ -185,15 +209,15 @@ int PayloadDeliverer::custom_command(int argc, char *argv[])
 	if (argc >= 1) {
 		// Tests the basic payload open / close ability
 		if (strcmp(argv[0], "gripper_test") == 0) {
-			get_instance() -> gripper_test();
+			get_instance()->gripper_test();
 			return 0;
 
 		} else if (strcmp(argv[0], "gripper_open") == 0) {
-			get_instance() -> gripper_open();
+			get_instance()->gripper_open();
 			return 0;
 
 		} else if (strcmp(argv[0], "gripper_close") == 0) {
-			get_instance() -> gripper_close();
+			get_instance()->gripper_close();
 			return 0;
 		}
 	}

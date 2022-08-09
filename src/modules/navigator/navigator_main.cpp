@@ -137,7 +137,7 @@ void Navigator::params_update()
 
 void Navigator::run()
 {
-	_have_geofence_position_data = false;
+	bool have_geofence_position_data = false;
 
 	/* Try to load the geofence:
 	 * if /fs/microsd/etc/geofence.txt load from this file */
@@ -195,7 +195,7 @@ void Navigator::run()
 			_gps_pos_sub.copy(&_gps_pos);
 
 			if (_geofence.getSource() == Geofence::GF_SOURCE_GPS) {
-				_have_geofence_position_data = true;
+				have_geofence_position_data = true;
 			}
 		}
 
@@ -204,7 +204,7 @@ void Navigator::run()
 			_global_pos_sub.copy(&_global_pos);
 
 			if (_geofence.getSource() == Geofence::GF_SOURCE_GLOBALPOS) {
-				_have_geofence_position_data = true;
+				have_geofence_position_data = true;
 			}
 		}
 
@@ -231,9 +231,7 @@ void Navigator::run()
 				PX4_ERR("vehicle_command lost, generation %d -> %d", last_generation, _vehicle_command_sub.get_last_generation());
 			}
 
-			// Partial solution to keep 'cmd' as local variable to not create such a big diff in the PR
-			// TODO: Put all of this below into a function named: ""
-			const struct vehicle_command_s cmd = _vehicle_command_sub.get();
+			const struct vehicle_command_s &cmd = _vehicle_command_sub.get();
 
 			if (cmd.command == vehicle_command_s::VEHICLE_CMD_DO_GO_AROUND) {
 
@@ -253,7 +251,7 @@ void Navigator::run()
 				position_setpoint.lon = cmd.param6;
 				position_setpoint.alt = PX4_ISFINITE(cmd.param7) ? cmd.param7 : get_global_position()->alt;
 
-				if (_have_geofence_position_data) {
+				if (have_geofence_position_data) {
 					reposition_valid = geofence_allows_position(position_setpoint);
 				}
 
@@ -373,7 +371,7 @@ void Navigator::run()
 				position_setpoint.lon = PX4_ISFINITE(cmd.param6) ? cmd.param6 : get_global_position()->lon;
 				position_setpoint.alt = PX4_ISFINITE(cmd.param7) ? cmd.param7 : get_global_position()->alt;
 
-				if (_have_geofence_position_data) {
+				if (have_geofence_position_data) {
 					orbit_location_valid = geofence_allows_position(position_setpoint);
 				}
 
@@ -563,7 +561,7 @@ void Navigator::run()
 		check_traffic();
 
 		/* Check geofence violation */
-		geofence_breach_check(_have_geofence_position_data);
+		geofence_breach_check(have_geofence_position_data);
 
 		/* Do stuff according to navigation state set by commander */
 		NavigatorMode *navigation_mode_new{nullptr};

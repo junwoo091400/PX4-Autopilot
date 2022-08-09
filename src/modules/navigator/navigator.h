@@ -383,7 +383,6 @@ private:
 	Geofence	_geofence;			/**< class that handles the geofence */
 	GeofenceBreachAvoidance _gf_breach_avoidance;
 	hrt_abstime _last_geofence_check = 0;
-	bool _have_geofence_position_data{false};
 
 	bool		_geofence_violation_warning_sent{false};	/**< prevents spaming to mavlink */
 	bool		_can_loiter_at_sp{false};			/**< flags if current position SP can be used to loiter */

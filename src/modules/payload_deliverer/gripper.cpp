@@ -33,11 +33,6 @@
 
 #include "gripper.h"
 
-Gripper::Gripper()
-{
-	// Do nothing
-}
-
 void Gripper::init(const GripperConfig &config)
 {
 	switch (config.type) {
@@ -69,9 +64,6 @@ void Gripper::init(const GripperConfig &config)
 
 	// We have valid gripper type & sensor configuration
 	_valid = true;
-
-	// Grab in the initialization stage
-	grab();
 }
 
 void Gripper::grab()

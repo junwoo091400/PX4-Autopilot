@@ -43,18 +43,18 @@ using namespace time_literals;
  */
 
 typedef struct GripperConfig {
-	typedef enum GripperType {
+	enum class GripperType {
 		UNDEFINED = -1,
 		SERVO = 0,
-	} GripperType;
+	};
 
 	GripperType type{GripperType::UNDEFINED};
 
 	// Gripper state feedback sensor type
-	typedef enum GripperSensorType {
+	enum class GripperSensorType {
 		NONE = -1,
 		ENCODER,
-	} GripperSensorType;
+	};
 
 	GripperSensorType sensor{GripperSensorType::NONE};
 
@@ -73,8 +73,7 @@ enum class GripperState {
 class Gripper
 {
 public:
-	// Constructor
-	Gripper();
+	Gripper() = default;
 
 	// Initialize the gripper
 	void init(const GripperConfig &config);

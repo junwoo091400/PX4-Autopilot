@@ -110,7 +110,7 @@ private:
 
 	// Publications
 	uORB::Publication<vehicle_command_ack_s> _vehicle_command_ack_pub{ORB_ID(vehicle_command_ack)};
-	uORB::PublicationData<actuator_controls_s> _actuator_controls_pub{ORB_ID(actuator_controls_1)};
+	uORB::Publication<vehicle_command_s> _vehicle_command_pub{ORB_ID(vehicle_command)};
 
 	DEFINE_PARAMETERS(
 		(ParamFloat<px4::params::PD_GRIPPER_TO>)	_param_gripper_timeout_s,
