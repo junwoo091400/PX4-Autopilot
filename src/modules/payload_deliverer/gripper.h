@@ -89,6 +89,7 @@ public:
 
 	// Returns true if in grabbed position either sensed or timeout based
 	bool grabbed() { return _state == GripperState::GRABBED; }
+	bool grabbing() { return _state == GripperState::GRABBING; }
 
 	// Returns true if in released position either sensed or timeout based
 	bool released() { return _state == GripperState::RELEASED; }

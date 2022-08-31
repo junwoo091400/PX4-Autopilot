@@ -68,9 +68,10 @@ bool PayloadDeliverer::initialize_gripper()
 	} else {
 		_gripper.update();
 
-		if (!_gripper.grabbed()) {
+		// If gripper wasn't commanded to go to grab position, command.
+		if (!_gripper.grabbed() && !_gripper.grabbing()) {
 			PX4_DEBUG("Gripper intialize: putting to grab position!");
-			_gripper.grab();
+			send_gripper_vehicle_command(vehicle_command_s::GRIPPER_ACTION_GRAB);
 		}
 
 		return true;
