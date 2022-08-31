@@ -80,7 +80,7 @@ public:
 	// Initializes the module
 	bool init();
 
-	// Functions to test the gripper functionality
+	// Gripper test commands provoked by custom_command() via CLI interface
 	void gripper_test();
 	void gripper_open();
 	void gripper_close();
@@ -96,16 +96,33 @@ private:
 	 */
 	void parameter_update();
 
-	bool initialize_gripper();
 	/**
-	 * @brief Updates the state of the gripper instance based on the vehicle command received
+	 * @brief Initialize gripper with current parameter settings
 	 */
-	void update_gripper(const hrt_abstime &now, const vehicle_command_s *vehicle_command = nullptr);
+	bool initialize_gripper();
+
+	/**
+	 * @brief Commands the payload delivery mechanism based on the received vehicle command
+	 *
+	 * Also handle vehicle command acknowledgement once the delivery is confirmed from the mechanism
+	 */
+	void handle_vehicle_command(const hrt_abstime &now, const vehicle_command_s *vehicle_command = nullptr);
+
+	/**
+	 * @brief Send DO_GRIPPER vehicle command with specified gripper action correctly formatted
+	 *
+	 * This is useful since vehicle command uses float types for param2, where the gripper action is
+	 * specified, but we want to use int32_t data type for it instead, hence filling out the floating
+	 * point data structure like integer type is necessary.
+	 *
+	 * @param gripper_command GRIPPER_ACTION_GRAB or GRIPPER_ACTION_RELEASE
+	 */
+	bool send_gripper_vehicle_command(const int32_t gripper_action);
 
 	Gripper _gripper; // Gripper object to handle gripper action
 
 	// Subscription
-	uORB::SubscriptionCallbackWorkItem _vehicle_command_sub{this, ORB_ID(vehicle_command)};
+	uORB::Subscription _vehicle_command_sub{ORB_ID(vehicle_command)};
 	uORB::SubscriptionInterval         _parameter_update_sub{ORB_ID(parameter_update), 1_s}; // subscription limited to 1 Hz updates
 
 	// Publications

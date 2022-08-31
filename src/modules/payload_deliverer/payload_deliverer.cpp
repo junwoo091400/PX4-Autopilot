@@ -40,12 +40,8 @@ PayloadDeliverer::PayloadDeliverer()
 
 bool PayloadDeliverer::init()
 {
-	// Register callback that triggers the Run() function
-	if (!_vehicle_command_sub.registerCallback()) {
-		PX4_ERR("callback registration failed");
-		return false;
-	}
-
+	// Schedule to run at 10Hz
+	ScheduleOnInterval(100_ms);
 	initialize_gripper();
 	return true;
 }
@@ -70,9 +66,17 @@ bool PayloadDeliverer::initialize_gripper()
 		return false;
 
 	} else {
-		_gripper.grab(); // Initialize to grab position
+		_gripper.update();
+
+		if (!_gripper.grabbed()) {
+			PX4_DEBUG("Gripper intialize: putting to grab position!");
+			_gripper.grab();
+		}
+
 		return true;
 	}
+
+
 }
 
 void PayloadDeliverer::parameter_update()
@@ -83,9 +87,11 @@ void PayloadDeliverer::parameter_update()
 
 void PayloadDeliverer::Run()
 {
+	const hrt_abstime now = hrt_absolute_time();
+	vehicle_command_s vcmd{};
+
 	if (should_exit()) {
 		ScheduleClear();
-		_vehicle_command_sub.unregisterCallback();
 		exit_and_cleanup();
 		return;
 	}
@@ -96,19 +102,16 @@ void PayloadDeliverer::Run()
 		parameter_update();
 	}
 
-	const hrt_abstime now = hrt_absolute_time();
-	vehicle_command_s vcmd{};
-
 	if (_vehicle_command_sub.update(&vcmd)) {
-		update_gripper(now, &vcmd);
+		handle_vehicle_command(now, &vcmd);
 
 	} else {
-		update_gripper(now);
+		handle_vehicle_command(now);
 
 	}
 }
 
-void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_command_s *vehicle_command)
+void PayloadDeliverer::handle_vehicle_command(const hrt_abstime &now,  const vehicle_command_s *vehicle_command)
 {
 	if (!_gripper.is_valid()) {
 		PX4_WARN("Gripper instance not valid but vehicle command was received. Gripper won't work!");
@@ -117,15 +120,13 @@ void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_com
 
 	_gripper.update();
 
-	// Process successful release command acknowledgement
+	// Process successful gripper release acknowledgement
 	if (_gripper.released_read_once()) {
 		vehicle_command_ack_s vcmd_ack{};
 		vcmd_ack.timestamp = now;
-
 		vcmd_ack.command = vehicle_command_s::VEHICLE_CMD_DO_GRIPPER;
 		vcmd_ack.result = vehicle_command_ack_s::VEHICLE_CMD_RESULT_ACCEPTED;
 		_vehicle_command_ack_pub.publish(vcmd_ack);
-
 		PX4_DEBUG("Payload Drop Successful Ack Sent!");
 	}
 
@@ -134,9 +135,8 @@ void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_com
 		return;
 	}
 
-	// Process if we received DO_GRIPPER vehicle command
+	// Process DO_GRIPPER vehicle command
 	if (vehicle_command->command == vehicle_command_s::VEHICLE_CMD_DO_GRIPPER) {
-		PX4_DEBUG("Gripper command received!");
 		const int32_t gripper_action = *(int32_t *)&vehicle_command->param2; // Convert the action to integer
 
 		switch (gripper_action) {
@@ -151,6 +151,15 @@ void PayloadDeliverer::update_gripper(const hrt_abstime &now,  const vehicle_com
 	}
 }
 
+bool PayloadDeliverer::send_gripper_vehicle_command(const int32_t gripper_action)
+{
+	vehicle_command_s vcmd;
+	vcmd.timestamp = hrt_absolute_time();
+	vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_GRIPPER;
+	*(int32_t *)&vcmd.param2 = gripper_action;
+	return _vehicle_command_pub.publish(vcmd);
+}
+
 void PayloadDeliverer::gripper_test()
 {
 	if (!_gripper.is_valid()) {
@@ -159,29 +168,12 @@ void PayloadDeliverer::gripper_test()
 	}
 
 	PX4_INFO("Test: Opening the Gripper!");
-
-	// TODO: It could be better to publish vehicle command directly. But this currently doesn't work since
-	// this function would halt the Run() function's operation, and the vehicle command doesn't get translated into
-	// gripper uORB message. Need to fix this.
-
-	// vehicle_command_s vcmd;
-	// vcmd.timestamp = hrt_absolute_time();
-	// vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_GRIPPER;
-	// vcmd.param2 = vehicle_command_s::GRIPPER_ACTION_RELEASE;
-	// _vehicle_command_pub.publish(vcmd);
-
-	_gripper.release();
+	send_gripper_vehicle_command(vehicle_command_s::GRIPPER_ACTION_RELEASE);
 
 	px4_usleep(5_s);
 
 	PX4_INFO("Test: Closing the Gripper!");
-
-	// vcmd.timestamp = hrt_absolute_time();
-	// vcmd.command = vehicle_command_s::VEHICLE_CMD_DO_GRIPPER;
-	// vcmd.param2 = vehicle_command_s::GRIPPER_ACTION_GRAB;
-	// _vehicle_command_pub.publish(vcmd);
-
-	_gripper.grab();
+	send_gripper_vehicle_command(vehicle_command_s::GRIPPER_ACTION_GRAB);
 }
 
 void PayloadDeliverer::gripper_open()
@@ -191,7 +183,7 @@ void PayloadDeliverer::gripper_open()
 		return;
 	}
 
-	_gripper.release();
+	send_gripper_vehicle_command(vehicle_command_s::GRIPPER_ACTION_RELEASE);
 }
 
 void PayloadDeliverer::gripper_close()
@@ -201,7 +193,7 @@ void PayloadDeliverer::gripper_close()
 		return;
 	}
 
-	_gripper.grab();
+	send_gripper_vehicle_command(vehicle_command_s::GRIPPER_ACTION_GRAB);
 }
 
 int PayloadDeliverer::custom_command(int argc, char *argv[])
