@@ -560,17 +560,16 @@ MissionBlock::issue_command(const mission_item_s &item)
 	}
 
 	if (item.nav_cmd == NAV_CMD_DO_SET_SERVO) {
-		PX4_INFO("DO_SET_SERVO command");
-
-		// XXX: we should issue a vehicle command and handle this somewhere else
-		actuator_controls_s actuators = {};
-		actuators.timestamp = hrt_absolute_time();
+		vehicle_command_s vcmd = {};
+		vcmd.command = NAV_CMD_DO_SET_SERVO;
+		// Only param 1 & 2 are used. See: https://mavlink.io/en/messages/common.html#MAV_CMD_DO_SET_SERVO
+		vcmd.param1 = item.params[0];
+		vcmd.param2 = item.params[1];
+		_navigator->publish_vehicle_cmd(&vcmd);
 
 		// params[0] actuator number to be set 0..5 (corresponds to AUX outputs 1..6)
 		// params[1] new value for selected actuator in ms 900...2000
-		actuators.control[(int)item.params[0]] = 1.0f / 2000 * -item.params[1];
-
-		_actuator_pub.publish(actuators);
+		// actuators.control[(int)item.params[0]] = 1.0f / 2000 * -item.params[1];
 
 	} else if (item.nav_cmd == NAV_CMD_DO_WINCH ||
 		   item.nav_cmd == NAV_CMD_DO_GRIPPER) {

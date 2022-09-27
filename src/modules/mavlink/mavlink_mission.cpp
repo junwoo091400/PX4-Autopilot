@@ -1521,13 +1521,13 @@ MavlinkMissionManager::parse_mavlink_mission_item(const mavlink_mission_item_t *
 
 		case MAV_CMD_DO_WINCH:
 		case MAV_CMD_DO_GRIPPER:
+		case MAV_CMD_DO_SET_SERVO:
 			mission_item->nav_cmd = mavlink_mission_item->command;
 			MavlinkMissionManager::copy_params_from_mavlink_to_mission_item(mission_item, mavlink_mission_item, 1, 2);
 			break;
 
 		case MAV_CMD_DO_CHANGE_SPEED:
 		case MAV_CMD_DO_SET_HOME:
-		case MAV_CMD_DO_SET_SERVO:
 		case MAV_CMD_DO_LAND_START:
 		case MAV_CMD_DO_TRIGGER_CONTROL:
 		case MAV_CMD_DO_DIGICAM_CONTROL:
@@ -1625,7 +1625,7 @@ MavlinkMissionManager::format_mavlink_mission_item(const struct mission_item_s *
 
 		case NAV_CMD_DO_CHANGE_SPEED:
 		case NAV_CMD_DO_SET_HOME:
-		case NAV_CMD_DO_SET_SERVO:
+		case NAV_CMD_DO_SET_SERVO: // TODO: Can DO_SET_SERVO command come through with a non-MAV_FRAME_MISSION frame?
 		case NAV_CMD_DO_LAND_START:
 		case NAV_CMD_DO_TRIGGER_CONTROL:
 		case NAV_CMD_DO_DIGICAM_CONTROL:
