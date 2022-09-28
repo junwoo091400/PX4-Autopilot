@@ -216,7 +216,10 @@ class uploader(object):
         self.window = 0
         self.window_max = 256
         self.window_per = 2  # Sync,<result>
-        self.ackWindowedMode = False  # Assume Non Widowed mode for all USB CDC
+
+        # self.ackWindowedMode = False  # Assume Non Widowed mode for all USB CDC
+        self.ackWindowedMode = True  # Enable Windowed mode for fast flashing
+
         self.port = serial.Serial(portname, baudrate_bootloader, timeout=0.5, write_timeout=0)
         self.otp = b''
         self.sn = b''
