@@ -78,7 +78,6 @@ MissionBlock::is_mission_item_reached_or_completed()
 	switch (_mission_item.nav_cmd) {
 
 	// Action Commands that doesn't have timeout completes instantaneously
-	case NAV_CMD_DO_SET_SERVO:
 	case NAV_CMD_DO_SET_ACTUATOR:
 	case NAV_CMD_DO_LAND_START:
 	case NAV_CMD_DO_TRIGGER_CONTROL:
@@ -559,20 +558,8 @@ MissionBlock::issue_command(const mission_item_s &item)
 		return;
 	}
 
-	if (item.nav_cmd == NAV_CMD_DO_SET_SERVO) {
-		vehicle_command_s vcmd = {};
-		vcmd.command = NAV_CMD_DO_SET_SERVO;
-		// Only param 1 & 2 are used. See: https://mavlink.io/en/messages/common.html#MAV_CMD_DO_SET_SERVO
-		vcmd.param1 = item.params[0];
-		vcmd.param2 = item.params[1];
-		_navigator->publish_vehicle_cmd(&vcmd);
-
-		// params[0] actuator number to be set 0..5 (corresponds to AUX outputs 1..6)
-		// params[1] new value for selected actuator in ms 900...2000
-		// actuators.control[(int)item.params[0]] = 1.0f / 2000 * -item.params[1];
-
-	} else if (item.nav_cmd == NAV_CMD_DO_WINCH ||
-		   item.nav_cmd == NAV_CMD_DO_GRIPPER) {
+	if (item.nav_cmd == NAV_CMD_DO_WINCH ||
+	    item.nav_cmd == NAV_CMD_DO_GRIPPER) {
 		// Initiate Payload Deployment
 		vehicle_command_s vcmd = {};
 		vcmd.command = item.nav_cmd;
