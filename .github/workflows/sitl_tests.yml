@@ -15,10 +15,10 @@ jobs:
       fail-fast: false
       matrix:
         config:
-          - {model: "iris",          latitude:  "59.617693", longitude: "-151.145316", altitude:  "48", build_type: "RelWithDebInfo" } # Alaska
+          #- {model: "iris",          latitude:  "59.617693", longitude: "-151.145316", altitude:  "48", build_type: "RelWithDebInfo" } # Alaska
           - {model: "standard_vtol", latitude: "-38.071235", longitude:  "145.281220", altitude:  "31", build_type: "AddressSanitizer" } # Australia
-          - {model: "tailsitter" ,   latitude:  "29.660316", longitude:  "-82.316658", altitude:  "30", build_type: "RelWithDebInfo" } # Florida
-          - {model: "standard_vtol", latitude:  "47.397742", longitude:    "8.545594", altitude: "488", build_type: "Coverage" } # Zurich
+          #- {model: "tailsitter" ,   latitude:  "29.660316", longitude:  "-82.316658", altitude:  "30", build_type: "RelWithDebInfo" } # Florida
+          #- {model: "standard_vtol", latitude:  "47.397742", longitude:    "8.545594", altitude: "488", build_type: "Coverage" } # Zurich
 
     container:
       image: px4io/px4-dev-simulation-focal:2021-09-08
@@ -99,7 +99,7 @@ jobs:
       run: test/mavsdk_tests/mavsdk_test_runner.py --speed-factor 20 --abort-early --model ${{matrix.config.model}} --upload test/mavsdk_tests/configs/sitl.json --verbose
       timeout-minutes: 45
 
-    - name: Look at core files
+    - name: Look at core files (this doesn't work for now)
       if: failure()
       run: gdb build/px4_sitl_default/bin/px4 px4.core -ex "thread apply all bt" -ex "quit"
     - name: Upload px4 coredump
@@ -113,7 +113,7 @@ jobs:
       if: failure()
       uses: actions/upload-artifact@v2-preview
       with:
-        name: binary
+        name: ${{matrix.config.model}}-failed-test-binary.px4
         path: build/px4_sitl_default/bin/px4
 
     # Report test coverage

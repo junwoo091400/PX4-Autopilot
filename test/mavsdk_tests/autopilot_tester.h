@@ -252,9 +252,7 @@ private:
 
 				if (elapsed_time_us > duration_us) {
 					std::cout << time_str() << "Timeout, waiting for the vehicle for "
-						  << elapsed_time_us.count() * std::chrono::steady_clock::period::num
-						  / static_cast<double>(std::chrono::steady_clock::period::den)
-						  << " seconds\n";
+						  << elapsed_time_us.count() / 1e6 << " seconds\n";
 					return false;
 				}
 			}

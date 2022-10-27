@@ -138,8 +138,12 @@ class Runner:
                 self.name, self.process.returncode))
 
         self.stop_thread.set()
-        self.thread.join()
+        print('stop thread set')
+        # Apply 5 seconds of timeout for Thread to terminate
+        self.thread.join(5)
+        print('thread joined. State:', self.thread.is_alive())
         self.log_fd.close()
+        print('log closed')
 
         return self.process.returncode
 

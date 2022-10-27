@@ -353,8 +353,16 @@ class Tester:
         self.start_runners(log_dir, test, case)
 
         test_timeout_s = test['timeout_min']*60
+
+        # Use the last active runner (test runner) time for detecting timeout
         while self.active_runners[-1].time_elapsed_s() < test_timeout_s:
+            # We only care about the TestRunner object's status
+            # Other process like `GzmodelspawnRunner` may already have returned 0.
             returncode = self.active_runners[-1].poll()
+            print(self.active_runners)
+            for r in self.active_runners:
+                print(r.poll(), end=' ')
+            print('')
 
             self.collect_runner_output()
 
@@ -370,6 +378,7 @@ class Tester:
             is_success = False
 
         self.stop_runners()
+
         # Collect what was left in output buffers.
         self.collect_runner_output()
         self.stop_combined_log()
@@ -483,6 +492,7 @@ class Tester:
 
     def stop_runners(self) -> None:
         for runner in self.active_runners:
+            print(runner, ' stopping!')
             runner.stop()
 
     def collect_runner_output(self) -> None:
