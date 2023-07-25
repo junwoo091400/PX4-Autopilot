@@ -47,6 +47,33 @@ FixedwingAttitudeControl::FixedwingAttitudeControl(bool vtol) :
 {
 	/* fetch initial parameter values */
 	parameters_update();
+
+	// const int SIZE = 17 * 17 * 33 * 5 * 3 * 2;
+	// uint8_t *ptr = WIND_MODEL_DUMMY;
+	// for (int i = 0; i<SIZE; i++) {
+	// 	ptr[i] = i + 1;
+	// }
+
+	const int dim1 = 17;
+	const int dim2 = 17;
+	const int dim3 = 33;
+	const int dim4 = 5;
+	const int dim5 = 3;
+
+	// Loop through the array and set random values for each element
+	for (int i = 0; i < dim1; ++i) {
+		for (int j = 0; j < dim2; ++j) {
+			for (int k = 0; k < dim3; ++k) {
+				for (int l = 0; l < dim4; ++l) {
+					for (int m = 0; m < dim5; ++m) {
+						WIND_MODEL_DUMMY[i][j][k][l][m] = rand(); // Random
+					}
+				}
+			}
+		}
+	}
+
+	// WIND_MODEL_DUMMY[5][3][6][3][1] = 12;
 }
 
 FixedwingAttitudeControl::~FixedwingAttitudeControl()
@@ -174,6 +201,8 @@ void FixedwingAttitudeControl::Run()
 		exit_and_cleanup();
 		return;
 	}
+
+	printf("Data: %d\n", WIND_MODEL_DUMMY[5][3][6][3][1]);
 
 	perf_begin(_loop_perf);
 

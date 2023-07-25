@@ -73,6 +73,10 @@ using uORB::SubscriptionData;
 
 using namespace time_literals;
 
+// Dummy wind model
+// #pragma DATA_SECTION(WIND_MODEL_DUMMY, ".my_section")
+static uint16_t WIND_MODEL_DUMMY[17][17][33][5][3] = { };
+
 class FixedwingAttitudeControl final : public ModuleBase<FixedwingAttitudeControl>, public ModuleParams,
 	public px4::ScheduledWorkItem
 {
