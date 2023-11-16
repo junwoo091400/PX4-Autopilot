@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+'''
+Note: 'tag_or_branch' is a variable intended to be used as directory name for
+metadata for S3 bucket. It should be representitive of the version of the code,
+which is either git tag (if exactly on a tag) or git branch name (if main, master,
+or release-<version>) or empty string (if on a custom branch / checked out on commit
+that isn't tagged).
+
+Therefore, it should be either "master", "release-<version>", or "".
+'''
 
 import argparse
 import os
@@ -101,11 +110,14 @@ except:
     oem_tag = ''
 
 if tag_or_branch is None:
-    # replace / so it can be used as directory name
+    # replace / so it can be used as directory name (for metadata)
     tag_or_branch = git_branch_name.replace('/', '-')
-    # either a release or master branch (used for metadata)
-    if not tag_or_branch.startswith('release-'):
+    if tag_or_branch == 'master' or tag_or_branch == 'main':
         tag_or_branch = 'master'
+    elif tag_or_branch.startswith('release-'):
+        tag_or_branch = tag_or_branch
+    else:
+        tag_or_branch = ''
 
 header += f"""
 #define PX4_GIT_VERSION_STR "{git_version}"
