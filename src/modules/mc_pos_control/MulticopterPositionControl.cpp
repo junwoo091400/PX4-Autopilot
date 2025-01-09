@@ -304,6 +304,9 @@ void MulticopterPositionControl::parameters_update(bool force)
 		_takeoff.setSpoolupTime(_param_com_spoolup_time.get());
 		_takeoff.setTakeoffRampTime(_param_mpc_tko_ramp_t.get());
 		_takeoff.generateInitialRampValue(_param_mpc_z_vel_p_acc.get());
+
+		_control._omni_pitch_lim_rad = math::radians(_param_omni_pitch_max_deg.get());
+		_control._omni_pitch_slew_rad_s = math::radians(_param_omni_pitch_slew_deg_s.get());
 	}
 }
 

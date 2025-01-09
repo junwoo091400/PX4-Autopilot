@@ -188,7 +188,10 @@ private:
 
 		(ParamFloat<px4::params::MPC_XY_ERR_MAX>) _param_mpc_xy_err_max,
 		(ParamFloat<px4::params::MPC_YAWRAUTO_MAX>) _param_mpc_yawrauto_max,
-		(ParamFloat<px4::params::MPC_YAWRAUTO_ACC>) _param_mpc_yawrauto_acc
+		(ParamFloat<px4::params::MPC_YAWRAUTO_ACC>) _param_mpc_yawrauto_acc,
+
+		(ParamFloat<px4::params::OMNI_PITCH_MAX>) _param_omni_pitch_max_deg,
+		(ParamFloat<px4::params::OMNI_PITCH_SLEW>) _param_omni_pitch_slew_deg_s
 	);
 
 	math::WelfordMean<float> _sample_interval_s{};

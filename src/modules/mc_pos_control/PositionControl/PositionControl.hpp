@@ -192,6 +192,9 @@ public:
 	 */
 	static const trajectory_setpoint_s empty_trajectory_setpoint;
 
+	float _omni_pitch_lim_rad{0.0f};
+	float _omni_pitch_slew_rad_s{0.0f};
+
 private:
 	// The range limits of the hover thrust configuration/estimate
 	static constexpr float HOVER_THRUST_MIN = 0.05f;

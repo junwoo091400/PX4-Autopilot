@@ -277,7 +277,8 @@ void PositionControl::getAttitudeSetpoint(vehicle_attitude_setpoint_s &attitude_
 		_pitch_angle = 0.f;
 
 	} else {
-		_pitch_angle += _dt * manual_control_setpoint.aux1 * 2.f * M_PI_F / 2.f;
+		_pitch_angle += _dt * manual_control_setpoint.aux1 * _omni_pitch_slew_rad_s;
+		_pitch_angle = math::constrain(_pitch_angle, -_omni_pitch_lim_rad, _omni_pitch_lim_rad);
 		// _pitch_angle += _dt * powf(manual_control_setpoint.aux1, 2.f) * 2.f * M_PI_F / 2.f; // TODO: aux2
 	}
 

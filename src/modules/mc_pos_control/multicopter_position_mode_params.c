@@ -193,3 +193,13 @@ PARAM_DEFINE_FLOAT(MPC_Z_MAN_EXPO, 0.6f);
  * @group Multicopter Position Control
  */
 PARAM_DEFINE_FLOAT(MPC_YAW_EXPO, 0.6f);
+
+/**
+ * Maximum pitch angle commandable via AUX1 channel [deg]
+ */
+PARAM_DEFINE_FLOAT(OMNI_PITCH_MAX, 20.0f);
+
+/**
+ * Slew rate for pitch angle commandable via AUX1 channel [deg/s]
+ */
+PARAM_DEFINE_FLOAT(OMNI_PITCH_SLEW, 30.0f);
