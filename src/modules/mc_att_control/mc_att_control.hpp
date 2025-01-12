@@ -140,6 +140,10 @@ private:
 
 	uint8_t _quat_reset_counter{0};
 
+	// [rad] 3D thrust control with pitch control via AUX1
+	float _pitch_angle = 0.0f;
+	matrix::Vector3f _thrust_sp;
+
 	DEFINE_PARAMETERS(
 		(ParamInt<px4::params::MC_AIRMODE>)         _param_mc_airmode,
 		(ParamFloat<px4::params::MC_MAN_TILT_TAU>)  _param_mc_man_tilt_tau,
@@ -161,6 +165,9 @@ private:
 		(ParamFloat<px4::params::MPC_THR_HOVER>)    _param_mpc_thr_hover,       /**< throttle at stationary hover */
 		(ParamInt<px4::params::MPC_THR_CURVE>)      _param_mpc_thr_curve,       /**< throttle curve behavior */
 
-		(ParamFloat<px4::params::COM_SPOOLUP_TIME>) _param_com_spoolup_time
+		(ParamFloat<px4::params::COM_SPOOLUP_TIME>) _param_com_spoolup_time,
+
+		(ParamFloat<px4::params::OMNI_PITCH_MAX>) _param_omni_pitch_max_deg,
+		(ParamFloat<px4::params::OMNI_PITCH_SLEW>) _param_omni_pitch_slew_deg_s
 	)
 };

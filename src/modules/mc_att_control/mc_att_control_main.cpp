@@ -184,6 +184,33 @@ MulticopterAttitudeControl::generate_attitude_setpoint(const Quatf &q, float dt,
 
 	attitude_setpoint.thrust_body[2] = -throttle_curve(_manual_control_setpoint.throttle);
 
+	// If AUX2 is High, use 3D thrust control
+	if (_manual_control_setpoint.aux2 > 0.3f || true) {
+		if (_landed) {
+			_pitch_angle = 0.f;
+
+		} else {
+			_pitch_angle += dt * _manual_control_setpoint.aux1 * math::radians(_param_omni_pitch_slew_deg_s.get());
+			_pitch_angle = math::constrain(_pitch_angle, -math::radians(_param_omni_pitch_max_deg.get()),
+						       math::radians(_param_omni_pitch_max_deg.get()));
+		}
+
+		Quatf q_sp_ = Eulerf(0.f, _pitch_angle, _man_yaw_sp);
+		q_sp_.copyTo(attitude_setpoint.q_d);
+		attitude_setpoint.yaw_sp_move_rate = attitude_setpoint.yaw_sp_move_rate;	// yaw rate is in global frame
+
+		// Calculate global frame thrust vector
+		matrix::Vector3f thrust_sp;
+		thrust_sp(2) = -throttle_curve(_manual_control_setpoint.throttle);
+		thrust_sp(0) = -_manual_control_setpoint.pitch;
+		thrust_sp(1) = _manual_control_setpoint.roll;
+
+		// Rotate thrust by negative attitude
+		Dcmf att_sp_dcm{q_sp_};
+		Vector3f thrust_sp_body = att_sp_dcm.transpose() * thrust_sp;
+		thrust_sp_body.copyTo(attitude_setpoint.thrust_body);
+	}
+
 	attitude_setpoint.timestamp = hrt_absolute_time();
 	_vehicle_attitude_setpoint_pub.publish(attitude_setpoint);
 }
